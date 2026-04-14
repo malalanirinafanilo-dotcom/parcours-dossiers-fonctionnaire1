@@ -1,0 +1,39 @@
+{
+  "total_dossiers": 25,
+  "par_statut": [
+    {
+      "statut": "EN_ATTENTE_FINANCE",
+      "count": 7
+    },
+    {
+      "statut": "EN_ATTENTE_MEN",
+      "count": 6
+    },
+    {
+      "statut": "TERMINE",
+      "count": 5
+    },
+    {
+      "statut": "EN_ATTENTE_DREN",
+      "count": 3
+    },
+    {
+      "statut": "EN_ATTENTE_FOP",
+      "count": 2
+    },
+    {
+      "statut": "REJETE",
+      "count": 1
+    },
+    {
+      "statut": "BROUILLON",
+      "count": 1
+    }
+  ],
+  "delai_moyen_jours": 0.2,
+  "par_mois": {
+    "2026-03": 25
+  },
+  "taux_reussite": 20.0,
+  "taux_rejet": 4.0
+}

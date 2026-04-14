@@ -1,0 +1,9 @@
+# dossiers/apps.py
+from django.apps import AppConfig
+
+class DossiersConfig(AppConfig):
+    default_auto_field = 'django.db.models.BigAutoField'
+    name = 'dossiers'
+    
+    def ready(self):
+        import dossiers.signals

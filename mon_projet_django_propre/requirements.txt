@@ -1,0 +1,18 @@
+# requirements.txt
+Django==6.0.3
+djangorestframework==3.15.2
+djangorestframework-simplejwt==5.3.1
+django-cors-headers==4.6.0
+psycopg2-binary==2.9.10
+python-decouple==3.8
+
+# Data Science (sans numpy explicite)
+pandas==2.2.3
+scikit-learn==1.6.1  # Note: scikit-learn dépend de numpy mais c'est OK
+
+# Workflow
+django-workflow==1.6  # ou django-viewflow==2.2.6
+
+# Tâches asynchrones
+celery==5.6.2
+redis==5.2.1
