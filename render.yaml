@@ -1,0 +1,89 @@
+# E:\mon-projet-final\render.yaml
+services:
+  # ========== BASE DE DONNÉES POSTGRESQL ==========
+  - type: postgresql
+    name: parcours-dossiers-db
+    plan: free
+    databaseName: dossiers_db
+    ipAllowList: []  # only allow internal connections
+
+  # ========== CACHE REDIS ==========
+  - type: redis
+    name: parcours-dossiers-redis
+    plan: free
+    ipAllowList: []
+
+  # ========== BACKEND DJANGO ==========
+  - type: web
+    name: parcours-dossiers-api
+    runtime: python
+    plan: free
+    buildCommand: ./build.sh
+    startCommand: gunicorn config.wsgi:application
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: parcours-dossiers-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: parcours-dossiers-redis
+          type: redis
+          property: connectionString
+      - key: DJANGO_SECRET_KEY
+        generateValue: true
+      - key: DEBUG
+        value: false
+      - key: ALLOWED_HOSTS
+        value: .onrender.com
+      - key: CORS_ALLOWED_ORIGINS
+        value: https://parcours-dossiers.onrender.com
+      - key: CSRF_TRUSTED_ORIGINS
+        value: https://parcours-dossiers.onrender.com
+
+  # ========== CELERY WORKER ==========
+  - type: worker
+    name: parcours-dossiers-worker
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: celery -A config worker --loglevel=info
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: parcours-dossiers-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: parcours-dossiers-redis
+          type: redis
+          property: connectionString
+      - key: DJANGO_SECRET_KEY
+        generateValue: true
+      - key: DEBUG
+        value: false
+
+  # ========== CELERY BEAT (Tâches planifiées) ==========
+  - type: cron
+    name: parcours-dossiers-beat
+    runtime: python
+    schedule: "0 2 * * *"  # Tous les jours à 2h du matin
+    buildCommand: pip install -r requirements.txt
+    startCommand: celery -A config beat --loglevel=info
+    envVars:
+      - key: REDIS_URL
+        fromService:
+          name: parcours-dossiers-redis
+          type: redis
+          property: connectionString
+      - key: DJANGO_SECRET_KEY
+        generateValue: true
+
+  # ========== FRONTEND REACT ==========
+  - type: static
+    name: parcours-dossiers
+    buildCommand: npm install && npm run build
+    publishPath: ./dist
+    envVars:
+      - key: VITE_API_URL
+        value: https://parcours-dossiers-api.onrender.com/api

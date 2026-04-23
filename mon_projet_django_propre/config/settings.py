@@ -1,20 +1,19 @@
+# config/settings.py - VERSION COMPLÈTE POUR RENDER
 import os
 from pathlib import Path
 from decouple import config
 from datetime import timedelta
+import dj_database_url
 
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
+# ==================== BASE DU PROJET ====================
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = config('DJANGO_SECRET_KEY')
-
-# SECURITY WARNING: don't run with debug turned on in production!
+# ==================== SÉCURITÉ ====================
+SECRET_KEY = config('DJANGO_SECRET_KEY', default='django-insecure-key-for-docker')
 DEBUG = config('DEBUG', default=False, cast=bool)
+ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1').split(',')
 
-ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='').split(',')
-
-# Application definition
+# ==================== APPLICATIONS INSTALLÉES ====================
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -27,7 +26,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework_simplejwt',
     'corsheaders',
-    
+    'whitenoise.runserver_nostatic',  # ← Pour WhiteNoise
     # Local apps
     'core',
     'workflow',
@@ -35,8 +34,10 @@ INSTALLED_APPS = [
     'api',
 ]
 
+# ==================== MIDDLEWARE (AVEC WHITENOISE) ====================
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',  # ← EN PREMIER !
     'corsheaders.middleware.CorsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -46,9 +47,11 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
+# ==================== ENCODAGES ====================
 DEFAULT_CHARSET = 'utf-8'
 FILE_CHARSET = 'utf-8'
 
+# ==================== URLS ET TEMPLATES ====================
 ROOT_URLCONF = 'config.urls'
 
 TEMPLATES = [
@@ -69,62 +72,64 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'config.wsgi.application'
 
-# Configuration PostgreSQL
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': config('DB_NAME'),
-        'USER': config('DB_USER'),
-        'PASSWORD': config('DB_PASSWORD'),
-        'HOST': config('DB_HOST'),
-        'PORT': config('DB_PORT'),
-        'OPTIONS': {
-            'client_encoding': 'UTF8',
-        },
+# ==================== BASE DE DONNÉES (Render + Local) ====================
+# Détecte automatiquement si on est sur Render (DATABASE_URL existe)
+if os.environ.get('DATABASE_URL'):
+    # Mode Render (PostgreSQL managé)
+    DATABASES = {
+        'default': dj_database_url.config(
+            default=os.environ.get('DATABASE_URL'),
+            conn_max_age=600,
+            ssl_require=not DEBUG
+        )
     }
-}
+else:
+    # Mode développement local
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': os.environ.get('DB_NAME', config('DB_NAME', default='dossiers_db')),
+            'USER': os.environ.get('DB_USER', config('DB_USER', default='postgres')),
+            'PASSWORD': os.environ.get('DB_PASSWORD', config('DB_PASSWORD', default='postgres')),
+            'HOST': os.environ.get('DB_HOST', config('DB_HOST', default='localhost')),
+            'PORT': os.environ.get('DB_PORT', config('DB_PORT', default='5432')),
+            'OPTIONS': {'client_encoding': 'UTF8'},
+        }
+    }
 
-# Custom user model
+# ==================== MODÈLE UTILISATEUR ====================
 AUTH_USER_MODEL = 'core.User'
 
-# Password validation
+# ==================== VALIDATION MOTS DE PASSE ====================
 AUTH_PASSWORD_VALIDATORS = [
-    {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
-    },
+    {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
 
-# Internationalization
+# ==================== INTERNATIONALISATION ====================
 LANGUAGE_CODE = 'fr-fr'
 TIME_ZONE = 'Indian/Antananarivo'
 USE_I18N = True
 USE_TZ = True
 
-# Static files (CSS, JavaScript, Images)
-STATIC_URL = 'static/'
-STATIC_ROOT = BASE_DIR / 'static'
+# ==================== FICHIERS STATIQUES ET MÉDIAS ====================
+STATIC_URL = '/static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
-# ==================== CONFIGURATION DES FICHIERS MÉDIAS ====================
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
-# Permettre l'affichage des fichiers dans le navigateur
+# ==================== SÉCURITÉ ====================
 SECURE_CONTENT_TYPE_NOSNIFF = False
 X_FRAME_OPTIONS = 'SAMEORIGIN' if not DEBUG else 'ALLOWALL'
 
-# Default primary key field type
+# ==================== CLÉ PRIMAIRE ====================
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# REST Framework configuration
+# ==================== REST FRAMEWORK ====================
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
@@ -139,24 +144,21 @@ REST_FRAMEWORK = {
     ],
 }
 
-# JWT Configuration
+# ==================== JWT ====================
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
     'ROTATE_REFRESH_TOKENS': False,
     'BLACKLIST_AFTER_ROTATION': True,
-    'UPDATE_LAST_LOGIN': False,
     'ALGORITHM': 'HS256',
     'SIGNING_KEY': SECRET_KEY,
-    'VERIFYING_KEY': None,
     'AUTH_HEADER_TYPES': ('Bearer',),
     'USER_ID_FIELD': 'id',
     'USER_ID_CLAIM': 'user_id',
-    'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
-    'TOKEN_TYPE_CLAIM': 'token_type',
 }
 
-# ==================== CORS CONFIGURATION ====================
+# ==================== CORS (Développement + Render) ====================
+# Origines autorisées depuis les variables d'environnement
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
@@ -168,18 +170,33 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:8080",
 ]
 
+# Ajouter l'origine Render si configurée
+render_frontend = os.environ.get('RENDER_FRONTEND_URL')
+if render_frontend:
+    CORS_ALLOWED_ORIGINS.append(render_frontend)
+
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_METHODS = ['DELETE', 'GET', 'OPTIONS', 'PATCH', 'POST', 'PUT']
 CORS_ALLOW_HEADERS = [
     'accept', 'accept-encoding', 'authorization', 'content-type',
     'dnt', 'origin', 'user-agent', 'x-csrftoken', 'x-requested-with',
 ]
-CORS_ALLOW_ALL_ORIGINS = True
-CORS_EXPOSE_HEADERS = ['Content-Type', 'X-CSRFToken']
 
-# ==================== CELERY CONFIGURATION ====================
-CELERY_BROKER_URL = config('REDIS_URL', default='redis://localhost:6379/0')
-CELERY_RESULT_BACKEND = config('REDIS_URL', default='redis://localhost:6379/0')
+# CSRF Trusted Origins (pour Render)
+CSRF_TRUSTED_ORIGINS = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:5173",
+]
+
+if render_frontend:
+    CSRF_TRUSTED_ORIGINS.append(render_frontend)
+
+# ==================== REDIS / CELERY ====================
+REDIS_URL = os.environ.get('REDIS_URL', config('REDIS_URL', default='redis://localhost:6379/0'))
+
+CELERY_BROKER_URL = REDIS_URL
+CELERY_RESULT_BACKEND = REDIS_URL
 CELERY_ACCEPT_CONTENT = ['application/json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
@@ -187,6 +204,39 @@ CELERY_TIMEZONE = TIME_ZONE
 CELERY_TASK_TRACK_STARTED = True
 CELERY_TASK_TIME_LIMIT = 30 * 60
 CELERY_RESULT_EXPIRES = 60 * 60 * 24
+
+# Reconnexion automatique
+CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
+CELERY_BROKER_CONNECTION_RETRY = True
+CELERY_BROKER_CONNECTION_MAX_RETRIES = 10
+
+# ==================== FILES D'ATTENTE CELERY ====================
+CELERY_TASK_QUEUES = {
+    'default': {'exchange': 'default', 'routing_key': 'default'},
+    'high_priority': {'exchange': 'high_priority', 'routing_key': 'high_priority'},
+    'ml_tasks': {'exchange': 'ml_tasks', 'routing_key': 'ml_tasks'},
+}
+CELERY_TASK_DEFAULT_QUEUE = 'default'
+
+# ==================== TÂCHES PLANIFIÉES ====================
+from celery.schedules import crontab
+
+CELERY_BEAT_SCHEDULE = {
+    'train-models-daily': {
+        'task': 'dossiers.tasks.train_models_task',
+        'schedule': crontab(hour=2, minute=0),
+        'options': {'queue': 'ml_tasks'},
+    },
+    'analyze-all-dossiers-weekly': {
+        'task': 'dossiers.tasks.analyze_all_dossiers_task',
+        'schedule': crontab(day_of_week=1, hour=3, minute=0),
+        'options': {'queue': 'ml_tasks'},
+    },
+    'nettoyage-fichiers-temporaires': {
+        'task': 'dossiers.tasks.nettoyer_fichiers_temporaires',
+        'schedule': 60 * 60 * 12,
+    },
+}
 
 # ==================== LOGGING ====================
 LOGGING = {
@@ -205,65 +255,21 @@ LOGGING = {
             'filename': BASE_DIR / 'logs' / 'django.log',
             'formatter': 'verbose',
         },
+        'console': {
+            'level': 'INFO',
+            'class': 'logging.StreamHandler',
+        },
     },
     'loggers': {
         'django': {
-            'handlers': ['file'],
+            'handlers': ['file', 'console'],
             'level': 'INFO',
             'propagate': True,
         },
-    },
-}
-
-# config/settings.py - Ajouter à la fin
-
-# ==================== CELERY CONFIGURATION ====================
-CELERY_BROKER_URL = config('REDIS_URL', default='redis://localhost:6379/0')
-CELERY_RESULT_BACKEND = config('REDIS_URL', default='redis://localhost:6379/0')
-CELERY_ACCEPT_CONTENT = ['application/json']
-CELERY_TASK_SERIALIZER = 'json'
-CELERY_RESULT_SERIALIZER = 'json'
-CELERY_TIMEZONE = TIME_ZONE
-CELERY_TASK_TRACK_STARTED = True
-CELERY_TASK_TIME_LIMIT = 30 * 60  # 30 minutes
-CELERY_RESULT_EXPIRES = 60 * 60 * 24  # 24 heures
-
-# Configuration de reconnexion
-CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
-CELERY_BROKER_CONNECTION_RETRY = True
-CELERY_BROKER_CONNECTION_MAX_RETRIES = 10
-
-# Configuration des files d'attente
-CELERY_TASK_QUEUES = {
-    'default': {
-        'exchange': 'default',
-        'routing_key': 'default',
-    },
-    'high_priority': {
-        'exchange': 'high_priority',
-        'routing_key': 'high_priority',
-    },
-    'ml_tasks': {
-        'exchange': 'ml_tasks',
-        'routing_key': 'ml_tasks',
-    },
-}
-
-CELERY_TASK_DEFAULT_QUEUE = 'default'
-CELERY_TASK_DEFAULT_EXCHANGE = 'default'
-CELERY_TASK_DEFAULT_ROUTING_KEY = 'default'
-
-# Tâches planifiées (optionnel)
-from celery.schedules import crontab
-CELERY_BEAT_SCHEDULE = {
-    'train-models-daily': {
-        'task': 'dossiers.tasks.train_models_task',
-        'schedule': crontab(hour=2, minute=0),  # Tous les jours à 2h du matin
-        'options': {'queue': 'ml_tasks'},
-    },
-    'analyze-all-dossiers-weekly': {
-        'task': 'dossiers.tasks.analyze_all_dossiers_task',
-        'schedule': crontab(day_of_week=1, hour=3, minute=0),  # Chaque lundi à 3h
-        'options': {'queue': 'ml_tasks'},
+        'dossiers': {
+            'handlers': ['file', 'console'],
+            'level': 'DEBUG',
+            'propagate': True,
+        },
     },
 }
