@@ -238,6 +238,7 @@ CELERY_BEAT_SCHEDULE = {
 }
 
 # ==================== LOGGING CORRIGÉ POUR RENDER ====================
+# ==================== LOGGING POUR RENDER (SANS FICHIER) ====================
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
@@ -248,12 +249,6 @@ LOGGING = {
         },
     },
     'handlers': {
-        'file': {
-            'level': 'DEBUG',
-            'class': 'logging.FileHandler',
-            'filename': os.path.join(BASE_DIR, 'logs', 'django.log'),
-            'formatter': 'verbose',
-        },
         'console': {
             'level': 'INFO',
             'class': 'logging.StreamHandler',
@@ -261,12 +256,12 @@ LOGGING = {
     },
     'loggers': {
         'django': {
-            'handlers': ['console'],  # ← Utilise uniquement console sur Render
+            'handlers': ['console'],
             'level': 'INFO',
             'propagate': True,
         },
         'dossiers': {
-            'handlers': ['console'],  # ← Utilise uniquement console sur Render
+            'handlers': ['console'],
             'level': 'DEBUG',
             'propagate': True,
         },
