@@ -1,4 +1,4 @@
-# config/settings.py - VERSION COMPLÈTE POUR RENDER
+# config/settings.py - VERSION COMPLÈTE CORRIGÉE POUR RENDER
 import os
 from pathlib import Path
 from decouple import config
@@ -26,7 +26,8 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework_simplejwt',
     'corsheaders',
-    'whitenoise.runserver_nostatic',  # ← Pour WhiteNoise
+    'whitenoise.runserver_nostatic',
+    
     # Local apps
     'core',
     'workflow',
@@ -37,7 +38,7 @@ INSTALLED_APPS = [
 # ==================== MIDDLEWARE (AVEC WHITENOISE) ====================
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',  # ← EN PREMIER !
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -73,7 +74,6 @@ TEMPLATES = [
 WSGI_APPLICATION = 'config.wsgi.application'
 
 # ==================== BASE DE DONNÉES (Render + Local) ====================
-# Détecte automatiquement si on est sur Render (DATABASE_URL existe)
 if os.environ.get('DATABASE_URL'):
     # Mode Render (PostgreSQL managé)
     DATABASES = {
@@ -158,7 +158,6 @@ SIMPLE_JWT = {
 }
 
 # ==================== CORS (Développement + Render) ====================
-# Origines autorisées depuis les variables d'environnement
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
@@ -238,7 +237,7 @@ CELERY_BEAT_SCHEDULE = {
     },
 }
 
-# ==================== LOGGING ====================
+# ==================== LOGGING CORRIGÉ POUR RENDER ====================
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
@@ -252,7 +251,7 @@ LOGGING = {
         'file': {
             'level': 'DEBUG',
             'class': 'logging.FileHandler',
-            'filename': BASE_DIR / 'logs' / 'django.log',
+            'filename': os.path.join(BASE_DIR, 'logs', 'django.log'),
             'formatter': 'verbose',
         },
         'console': {
@@ -262,12 +261,12 @@ LOGGING = {
     },
     'loggers': {
         'django': {
-            'handlers': ['file', 'console'],
+            'handlers': ['console'],  # ← Utilise uniquement console sur Render
             'level': 'INFO',
             'propagate': True,
         },
         'dossiers': {
-            'handlers': ['file', 'console'],
+            'handlers': ['console'],  # ← Utilise uniquement console sur Render
             'level': 'DEBUG',
             'propagate': True,
         },
