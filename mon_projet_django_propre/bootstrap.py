@@ -10,7 +10,7 @@ from core.models import Role
 
 User = get_user_model()
 
-print("🚀 Exécution du script de bootstrap...")
+print("🚀 Création des comptes utilisateurs...")
 
 # Créer les rôles
 roles_data = [
@@ -57,10 +57,10 @@ for user_data in users_data:
         if not created:
             user.set_password(user_data['password'])
             user.save()
-            print(f"✅ Mot de passe mis à jour pour: {user.username}")
+            print(f"✅ Compte mis à jour: {user.username}")
         else:
-            print(f"✅ Utilisateur créé: {user.username}")
+            print(f"✅ Compte créé: {user.username}")
     except Role.DoesNotExist:
         print(f"❌ Rôle {user_data['role_code']} non trouvé")
 
-print("✅ Script de bootstrap terminé !")
+print("✅ Tous les comptes sont prêts !")
