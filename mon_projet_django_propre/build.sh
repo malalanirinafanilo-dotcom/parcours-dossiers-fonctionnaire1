@@ -1,8 +1,14 @@
 #!/bin/bash
-echo "🚀 Début du build..."
-pip install --upgrade pip
+# build.sh
+
+# Installer les dépendances
 pip install -r requirements.txt
-python manage.py migrate --noinput
+
+# Collecter les fichiers statiques
 python manage.py collectstatic --noinput
-python bootstrap.py
-echo "✅ Build terminé !"
+
+# Appliquer les migrations
+python manage.py migrate
+
+# Créer les rôles et données de test
+python scripts/setup_test_data.py

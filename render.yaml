@@ -1,89 +1,102 @@
-# E:\mon-projet-final\render.yaml
+# render.yaml
 services:
-  # ========== BASE DE DONNÉES POSTGRESQL ==========
-  - type: postgresql
-    name: parcours-dossiers-db
-    plan: free
-    databaseName: dossiers_db
-    ipAllowList: []  # only allow internal connections
-
-  # ========== CACHE REDIS ==========
-  - type: redis
-    name: parcours-dossiers-redis
-    plan: free
-    ipAllowList: []
-
-  # ========== BACKEND DJANGO ==========
+  # ==================== SERVICE WEB PRINCIPAL ====================
   - type: web
     name: parcours-dossiers-api
     runtime: python
-    plan: free
-    buildCommand: ./build.sh
+    buildCommand: |
+      pip install -r requirements.txt
+      python -c "
+from django.contrib.auth import get_user_model;
+User = get_user_model();
+if not User.objects.filter(email='admin@parcours.com').exists():
+    User.objects.create_superuser(username='admin', email='admin@parcours.com', password='Admin123!', first_name='Admin', last_name='System')
+    print('✅ Superutilisateur créé: admin@parcours.com / Admin123!')
+else:
+    admin = User.objects.get(email='admin@parcours.com')
+    admin.set_password('Admin123!')
+    admin.save()
+    print('✅ Mot de passe mis à jour pour admin@parcours.com')
+"
+      python manage.py migrate
+      python manage.py collectstatic --noinput
     startCommand: gunicorn config.wsgi:application
     envVars:
-      - key: DATABASE_URL
-        fromDatabase:
-          name: parcours-dossiers-db
-          property: connectionString
-      - key: REDIS_URL
-        fromService:
-          name: parcours-dossiers-redis
-          type: redis
-          property: connectionString
       - key: DJANGO_SECRET_KEY
         generateValue: true
       - key: DEBUG
         value: false
       - key: ALLOWED_HOSTS
         value: .onrender.com
-      - key: CORS_ALLOWED_ORIGINS
-        value: https://parcours-dossiers.onrender.com
-      - key: CSRF_TRUSTED_ORIGINS
-        value: https://parcours-dossiers.onrender.com
+      - key: DB_NAME
+        fromDatabase:
+          name: parcours-dossiers-db
+          property: database
+      - key: DB_USER
+        fromDatabase:
+          name: parcours-dossiers-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: parcours-dossiers-db
+          property: password
+      - key: DB_HOST
+        fromDatabase:
+          name: parcours-dossiers-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: parcours-dossiers-db
+          property: port
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: parcours-dossiers-redis
+          property: connectionString
 
-  # ========== CELERY WORKER ==========
-  - type: worker
-    name: parcours-dossiers-worker
-    runtime: python
+  # ==================== SERVICE REDIS ====================
+  - type: redis
+    name: parcours-dossiers-redis
     plan: free
+
+  # ==================== WORKER CELERY ====================
+  - type: worker
+    name: parcours-dossiers-celery
+    runtime: python
     buildCommand: pip install -r requirements.txt
     startCommand: celery -A config worker --loglevel=info
     envVars:
-      - key: DATABASE_URL
-        fromDatabase:
-          name: parcours-dossiers-db
-          property: connectionString
       - key: REDIS_URL
         fromService:
-          name: parcours-dossiers-redis
           type: redis
+          name: parcours-dossiers-redis
           property: connectionString
       - key: DJANGO_SECRET_KEY
         generateValue: true
       - key: DEBUG
         value: false
 
-  # ========== CELERY BEAT (Tâches planifiées) ==========
+  # ==================== CRON POUR CELERY BEAT ====================
   - type: cron
-    name: parcours-dossiers-beat
+    name: parcours-dossiers-celery-beat
     runtime: python
-    schedule: "0 2 * * *"  # Tous les jours à 2h du matin
     buildCommand: pip install -r requirements.txt
     startCommand: celery -A config beat --loglevel=info
+    schedule: "0 0 * * *"  # Exécution quotidienne à minuit
     envVars:
       - key: REDIS_URL
         fromService:
-          name: parcours-dossiers-redis
           type: redis
+          name: parcours-dossiers-redis
           property: connectionString
       - key: DJANGO_SECRET_KEY
         generateValue: true
+      - key: DEBUG
+        value: false
 
-  # ========== FRONTEND REACT ==========
-  - type: static
-    name: parcours-dossiers
-    buildCommand: npm install && npm run build
-    publishPath: ./dist
-    envVars:
-      - key: VITE_API_URL
-        value: https://parcours-dossiers-api.onrender.com/api
+# ==================== BASE DE DONNÉES POSTGRESQL ====================
+databases:
+  - name: parcours-dossiers-db
+    databaseName: parcours_dossiers_db
+    plan: free
+    ipAllowList: []  # Autorise toutes les IP (à restreindre en production)

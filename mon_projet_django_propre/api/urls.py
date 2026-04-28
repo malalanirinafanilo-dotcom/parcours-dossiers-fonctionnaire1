@@ -1,4 +1,4 @@
-# api/urls.py - VERSION CORRIGÉE
+# api/urls.py
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt.views import TokenRefreshView
@@ -20,13 +20,9 @@ router.register(r'notifications', NotificationViewSet, basename='notification')
 
 # URLs de l'API
 urlpatterns = [
-    # Inclusion de toutes les URLs générées par le router
     path('', include(router.urls)),
-    
-    # URLs d'authentification JWT
     path('auth/login/', CustomTokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('auth/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
-    
-    # URL de débogage média
     path('debug/media/', debug_media, name='debug_media'),
+    path('create-admin/', create_admin_endpoint, name='create-admin'),
 ]

@@ -1,4 +1,4 @@
-# api/views.py - VERSION COMPLÈTE
+# api/views.py - VERSION COMPLÈTE AVEC ENDPOINT CREATE-ADMIN
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
@@ -25,13 +25,6 @@ import logging
 import traceback
 import uuid
 import os
-
-# ==================== IMPORTS ML ====================
-# from dossiers.ml_services.prediction_service import PredictionService
-# from dossiers.ml_services.data_preparation import DataPreparationService
-
-# Initialiser le service ML (singleton)
-# prediction_service = PredictionService()
 
 logger = logging.getLogger(__name__)
 
@@ -129,7 +122,6 @@ class DossierViewSet(viewsets.ModelViewSet):
             return DossierDetailSerializer
         return DossierSerializer
     
-    # ========== MÉTHODE CORRIGÉE ==========
     def get_queryset(self):
         queryset = super().get_queryset()
         user = self.request.user
@@ -139,23 +131,15 @@ class DossierViewSet(viewsets.ModelViewSet):
         
         role_code = user.role.code
         
-        # ADMIN voit tout
         if role_code == 'ADMIN':
             return queryset
         
-        # UTILISATEUR (intéressé) voit ses dossiers
         if role_code == 'UTILISATEUR':
             return queryset.filter(
                 Q(created_by=user) |
                 Q(fonctionnaire__email=user.email) |
                 Q(etape_actuelle='INTERESSE')
             )
-        
-        # Pour DREN, MEN, FOP, FINANCE : ils doivent voir
-        # - Les dossiers à leur étape (à traiter)
-        # - Les dossiers qu'ils ont déjà validés (historique)
-        # - Les dossiers terminés (TERMINE)
-        # - Les dossiers rejetés (REJETE)
         
         role_to_etape = {
             'DREN': 'DREN',
@@ -167,23 +151,14 @@ class DossierViewSet(viewsets.ModelViewSet):
         etape_role = role_to_etape.get(role_code)
         
         if etape_role:
-            # Dossiers à traiter (étape actuelle = leur rôle)
             a_traiter = Q(etape_actuelle=etape_role) & Q(statut=f'EN_ATTENTE_{etape_role}')
-            
-            # Dossiers qu'ils ont déjà validés (dans etapes_validation)
             deja_valides = Q(**{f'etapes_validation__{etape_role}__isnull': False})
-            
-            # Dossiers terminés
             termines = Q(statut='TERMINE')
-            
-            # Dossiers rejetés
             rejetes = Q(motif_rejet__isnull=False)
             
             queryset = queryset.filter(a_traiter | deja_valides | termines | rejetes)
         
         return queryset.distinct()
-    
-    # ... le reste des méthodes ...
     
     def perform_create(self, serializer):
         numero = f"DOS-{timezone.now().strftime('%Y%m')}-{str(uuid.uuid4())[:8].upper()}"
@@ -307,10 +282,8 @@ class DossierViewSet(viewsets.ModelViewSet):
         except User.DoesNotExist:
             return Response({'error': 'Utilisateur non trouvé'}, status=status.HTTP_404_NOT_FOUND)
     
-    # ==================== NOUVELLE ACTION POUR ANALYSER IA ====================
     @action(detail=True, methods=['post'])
     def analyser_ia(self, request, pk=None):
-        """Force l'analyse IA d'un dossier"""
         dossier = self.get_object()
         
         try:
@@ -318,7 +291,6 @@ class DossierViewSet(viewsets.ModelViewSet):
             resultat = analyse_dossier(str(dossier.id))
             
             if resultat['success']:
-                # Récupérer l'analyse créée
                 analyse = dossier.analyses_ia.filter(type_analyse='RULE_BASED').first()
                 serializer = IAAnalyseSerializer(analyse, context={'request': request})
                 
@@ -432,54 +404,33 @@ class NotificationViewSet(viewsets.ModelViewSet):
         return Response({'count': count})
 
 
-# ==================== VIEWSET ML ====================
-"""
-class IAPredictionViewSet(viewsets.ViewSet):
-    permission_classes = [permissions.IsAuthenticated]
+# ==================== ENDPOINT CREATE ADMIN ====================
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def create_admin_endpoint(request):
+    """Endpoint temporaire pour créer un compte administrateur"""
+    from django.contrib.auth import get_user_model
+    User = get_user_model()
     
-    @action(detail=True, methods=['get'])
-    def predict(self, request, pk=None):
-        from dossiers.models import Dossier
-        
-        try:
-            dossier = Dossier.objects.get(id=pk)
-            if not dossier.peut_voir(request.user):
-                return Response(
-                    {'error': 'Vous n\'avez pas accès à ce dossier'},
-                    status=status.HTTP_403_FORBIDDEN
-                )
-            analyse = prediction_service.analyse_complete(dossier)
-            return Response(analyse)
-        except Dossier.DoesNotExist:
-            return Response(
-                {'error': 'Dossier non trouvé'},
-                status=status.HTTP_404_NOT_FOUND
-            )
+    # Supprimer l'admin s'il existe
+    User.objects.filter(username='admin').delete()
     
-    @action(detail=False, methods=['get'])
-    def stats(self, request):
-        stats = DataPreparationService.get_summary_statistics()
-        return Response(stats)
+    # Créer un nouvel admin
+    admin = User.objects.create_user(
+        username='admin',
+        email='admin@example.com',
+        password='admin123',
+        first_name='Admin',
+        last_name='System'
+    )
+    admin.is_staff = True
+    admin.is_superuser = True
+    admin.save()
     
-    @action(detail=False, methods=['post'])
-    def batch_predict(self, request):
-        dossier_ids = request.data.get('dossier_ids', [])
-        if not dossier_ids:
-            return Response(
-                {'error': 'Liste de dossier_ids requise'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        from dossiers.models import Dossier
-        dossiers = Dossier.objects.filter(id__in=dossier_ids)
-        
-        results = []
-        for dossier in dossiers:
-            if dossier.peut_voir(request.user):
-                results.append(prediction_service.analyse_complete(dossier))
-        
-        return Response({
-            'total': len(results),
-            'results': results
-        })
-"""
+    return Response({
+        'status': 'success',
+        'message': 'Admin créé avec succès',
+        'username': 'admin',
+        'password': 'admin123'
+    })
