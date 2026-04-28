@@ -2,10 +2,8 @@
 import axios from 'axios';
 import toast from 'react-hot-toast';
 
-// Compatible Vite (dev) et Node.js (production)
-const API_URL = typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_URL
-  ? import.meta.env.VITE_API_URL
-  : process.env.VITE_API_URL || 'http://localhost:8000/api';
+// URL de l'API en production
+const API_URL = 'https://parcours-dossiers-api.onrender.com/api';
 
 const api = axios.create({
   baseURL: API_URL,

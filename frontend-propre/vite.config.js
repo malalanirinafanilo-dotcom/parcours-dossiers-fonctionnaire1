@@ -18,3 +18,10 @@ export default defineConfig({
     sourcemap: false,
   }
 })
+
+export default defineConfig({
+  plugins: [react()],
+  define: {
+    'import.meta.env.VITE_API_URL': JSON.stringify('https://parcours-dossiers-api.onrender.com/api')
+  }
+})
