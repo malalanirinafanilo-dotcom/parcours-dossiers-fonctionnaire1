@@ -18,9 +18,8 @@ router.register(r'notifications', NotificationViewSet, basename='notification')
 urlpatterns = [
     path('', include(router.urls)),
     path('auth/login/', CustomTokenObtainPairView.as_view(), name='token_obtain_pair'),
-    path('create-all-users/', create_all_users, name='create-all-users'),
     path('auth/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('debug/media/', debug_media, name='debug_media'),
     path('create-admin/', create_admin_endpoint, name='create-admin'),
-    path('create-all-users/', create_all_users, name='create-all-users'),  # ← AJOUTER CETTE LIGNE
+    path('create-all-users/', create_all_users, name='create-all-users'),
 ]

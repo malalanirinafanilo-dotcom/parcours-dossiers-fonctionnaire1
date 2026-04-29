@@ -1,4 +1,4 @@
-# api/views.py - VERSION COMPLÈTE AVEC ENDPOINTS CREATE-ADMIN ET CREATE-ALL-USERS
+# api/views.py - VERSION COMPLÈTE ET CORRIGÉE
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
@@ -469,10 +469,12 @@ def create_admin_endpoint(request):
     })
 
 
+# ==================== ENDPOINT CREATE ALL USERS (UNIQUE) ====================
+
 @api_view(['GET', 'POST'])
 @permission_classes([AllowAny])
 def create_all_users(request):
-    """Endpoint pour créer tous les utilisateurs de démonstration (version alternative)"""
+    """Endpoint pour créer tous les utilisateurs de démonstration"""
     from django.contrib.auth import get_user_model
     from core.models import Role
     
@@ -534,64 +536,4 @@ def create_all_users(request):
             {'username': 'fop', 'password': 'password123', 'role': 'FOP'},
             {'username': 'finance', 'password': 'password123', 'role': 'Finance'},
         ]
-    }
-@api_view(['GET'])
-@permission_classes([AllowAny])
-def create_all_users(request):
-    """Crée tous les utilisateurs de démonstration"""
-    from django.contrib.auth import get_user_model
-    from core.models import Role
-    
-    User = get_user_model()
-    
-    # Créer les rôles
-    roles = ['ADMIN', 'DREN', 'MEN', 'FOP', 'FINANCE', 'UTILISATEUR']
-    for code in roles:
-        Role.objects.get_or_create(code=code, defaults={'name': code})
-    
-    # Créer les utilisateurs
-    users = [
-        ('admin', 'admin@example.com', 'admin123', 'ADMIN', True, True, 'Admin', 'System'),
-        ('interesse', 'interesse@example.com', 'password123', 'UTILISATEUR', False, False, 'Jean', 'Rakoto'),
-        ('dren', 'dren@example.com', 'password123', 'DREN', False, False, 'Marie', 'Rasoa'),
-        ('men', 'men@example.com', 'password123', 'MEN', False, False, 'Paul', 'Rabe'),
-        ('fop', 'fop@example.com', 'password123', 'FOP', False, False, 'Faly', 'Randria'),
-        ('finance', 'finance@example.com', 'password123', 'FINANCE', False, False, 'Niry', 'Ranaivo'),
-    ]
-    
-    results = []
-    for username, email, pwd, role_code, staff, superuser, first, last in users:
-        try:
-            role = Role.objects.get(code=role_code)
-            user, created = User.objects.get_or_create(
-                username=username,
-                defaults={
-                    'email': email,
-                    'role': role,
-                    'first_name': first,
-                    'last_name': last,
-                    'is_staff': staff,
-                    'is_superuser': superuser,
-                }
-            )
-            if not created:
-                user.set_password(pwd)
-                user.save()
-            results.append({'username': username, 'created': created})
-        except Exception as e:
-            results.append({'username': username, 'error': str(e)})
-    
-    return Response({
-        'status': 'success',
-        'message': 'Tous les utilisateurs ont été créés',
-        'results': results,
-        'credentials': [
-            {'username': 'admin', 'password': 'admin123', 'role': 'Superutilisateur'},
-            {'username': 'interesse', 'password': 'password123', 'role': 'Intéressé'},
-            {'username': 'dren', 'password': 'password123', 'role': 'DREN'},
-            {'username': 'men', 'password': 'password123', 'role': 'MEN'},
-            {'username': 'fop', 'password': 'password123', 'role': 'FOP'},
-            {'username': 'finance', 'password': 'password123', 'role': 'Finance'},
-        ]
     })
-)
