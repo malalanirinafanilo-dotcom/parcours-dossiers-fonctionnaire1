@@ -22,20 +22,18 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     
-    # Third party apps
     'rest_framework',
     'rest_framework_simplejwt',
     'corsheaders',
     'whitenoise.runserver_nostatic',
     
-    # Local apps
     'core',
     'workflow',
     'dossiers',
     'api',
 ]
 
-# ==================== MIDDLEWARE (AVEC WHITENOISE) ====================
+# ==================== MIDDLEWARE ====================
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
@@ -73,9 +71,8 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'config.wsgi.application'
 
-# ==================== BASE DE DONNÉES (Render + Local) ====================
+# ==================== BASE DE DONNÉES ====================
 if os.environ.get('DATABASE_URL'):
-    # Mode Render (PostgreSQL managé)
     DATABASES = {
         'default': dj_database_url.config(
             default=os.environ.get('DATABASE_URL'),
@@ -84,7 +81,6 @@ if os.environ.get('DATABASE_URL'):
         )
     }
 else:
-    # Mode développement local
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.postgresql',
@@ -114,7 +110,7 @@ TIME_ZONE = 'Indian/Antananarivo'
 USE_I18N = True
 USE_TZ = True
 
-# ==================== FICHIERS STATIQUES ET MÉDIAS ====================
+# ==================== FICHIERS STATIQUES ====================
 STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
@@ -157,40 +153,6 @@ SIMPLE_JWT = {
     'USER_ID_CLAIM': 'user_id',
 }
 
-# ==================== CORS (Développement + Render) ====================
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-    "http://localhost:5174",
-    "http://127.0.0.1:5174",
-    "http://localhost:8080",
-    "http://127.0.0.1:8080",
-]
-
-# Ajouter l'origine Render si configurée
-render_frontend = os.environ.get('RENDER_FRONTEND_URL')
-if render_frontend:
-    CORS_ALLOWED_ORIGINS.append(render_frontend)
-
-CORS_ALLOW_CREDENTIALS = True
-CORS_ALLOW_METHODS = ['DELETE', 'GET', 'OPTIONS', 'PATCH', 'POST', 'PUT']
-CORS_ALLOW_HEADERS = [
-    'accept', 'accept-encoding', 'authorization', 'content-type',
-    'dnt', 'origin', 'user-agent', 'x-csrftoken', 'x-requested-with',
-]
-
-# CSRF Trusted Origins (pour Render)
-CSRF_TRUSTED_ORIGINS = [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-    "http://localhost:5173",
-]
-
-if render_frontend:
-    CSRF_TRUSTED_ORIGINS.append(render_frontend)
-
 # ==================== REDIS / CELERY ====================
 REDIS_URL = os.environ.get('REDIS_URL', config('REDIS_URL', default='redis://localhost:6379/0'))
 
@@ -204,7 +166,6 @@ CELERY_TASK_TRACK_STARTED = True
 CELERY_TASK_TIME_LIMIT = 30 * 60
 CELERY_RESULT_EXPIRES = 60 * 60 * 24
 
-# Reconnexion automatique
 CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
 CELERY_BROKER_CONNECTION_RETRY = True
 CELERY_BROKER_CONNECTION_MAX_RETRIES = 10
@@ -237,8 +198,7 @@ CELERY_BEAT_SCHEDULE = {
     },
 }
 
-# ==================== LOGGING CORRIGÉ POUR RENDER ====================
-# ==================== LOGGING POUR RENDER (SANS FICHIER) ====================
+# ==================== LOGGING (CORRIGÉ) ====================
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
@@ -266,11 +226,13 @@ LOGGING = {
             'propagate': True,
         },
     },
+}
+
 # ==================== CORS CONFIGURATION ====================
+# ⚠️ CES LIGNES DOIVENT ÊTRE APRÈS LE DICTIONNAIRE LOGGING
 CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
 
-# Autoriser toutes les méthodes
 CORS_ALLOW_METHODS = [
     'DELETE',
     'GET',
@@ -280,7 +242,6 @@ CORS_ALLOW_METHODS = [
     'PUT',
 ]
 
-# Autoriser tous les headers
 CORS_ALLOW_HEADERS = [
     'accept',
     'accept-encoding',
@@ -292,4 +253,3 @@ CORS_ALLOW_HEADERS = [
     'x-csrftoken',
     'x-requested-with',
 ]
-}
