@@ -1,1161 +1,641 @@
+// src/pages/Settings/Settings.tsx
 import React, { useState } from 'react';
-import { useSelector } from 'react-redux';
-import { 
-  // Icônes générales
+import { useSelector, useDispatch } from 'react-redux';
+import { RootState } from '../../store';
+import {
+  updateTheme,
+  updateThemeCouleur,
+  updatePolice,
+  updateTaillePolice,
+  updateDensite,
+  toggleAnimations,
+  updateNotifications,
+  updateSecurity,
+  resetSettings,
+} from '../../store/settingsSlice';
+import {
   Settings as SettingsIcon,
   Save,
-  Plus,
-  Edit,
-  Trash2,
+  Bell,
+  Lock,
+  User,
   Eye,
   EyeOff,
-  Download,
-  Upload,
-  Filter,
-  Search,
-  X,
-  Check,
-  AlertCircle,
-  CheckCircle2,
-  
-  // Icônes spécifiques
-  Globe,
-  Clock,
-  Calendar,
-  FileText,
-  Users,
-  Shield,
-  Bell,
-  Brain,
-  Paperclip,
-  Database,
-  LogOut,
-  HardDrive,
-  Key,
-  Mail,
-  MessageSquare,
-  Smartphone,
-  ToggleLeft,
-  ToggleRight,
-  Move,
   RefreshCw,
-  DownloadCloud,
-  UploadCloud,
-  Archive,
-  Lock,
-  Unlock,
-  Fingerprint,
-  Sliders,
-  BarChart3,
-  Activity,
-  Server,
-  Code,
-  Terminal,
-  HelpCircle,
+  CheckCircle,
+  AlertCircle,
+  Sun,
+  Moon,
+  Laptop,
+  Mail,
+  Smartphone,
+  Monitor,
+  FileText,
+  Clock,
+  Volume2,
+  VolumeX,
+  Palette,
+  Type,
+  ZoomIn,
+  ZoomOut,
+  Shield,
+  LogOut,
 } from 'lucide-react';
-import { RootState } from '../../store';
 import toast from 'react-hot-toast';
 
 const Settings: React.FC = () => {
+  const dispatch = useDispatch();
+  const settings = useSelector((state: RootState) => state.settings);
   const { user } = useSelector((state: RootState) => state.auth);
-  const [activeTab, setActiveTab] = useState('general');
-  const [showPopup, setShowPopup] = useState<string | null>(null);
-  const [editItem, setEditItem] = useState<any>(null);
-  const [searchTerm, setSearchTerm] = useState('');
-
-  // États pour les toggles
-  const [settings, setSettings] = useState({
-    // Général
-    appName: 'Gestion des Dossiers MEN',
-    logo: '/logo.png',
-    language: 'fr',
-    timezone: 'Indian/Antananarivo',
-    dateFormat: 'dd/mm/yyyy',
-    timeFormat: '24h',
-
-    // Notifications
-    notifications: {
-      enabled: true,
-      email: true,
-      sms: false,
-      inApp: true,
-      frequency: 'immediate',
-      recipients: ['admin@example.com', 'dren@example.com'],
-    },
-
-    // IA
-    iaPredictive: {
-      enabled: true,
-      riskThreshold: 75,
-      analyzedTypes: ['PROMOTION', 'MUTATION'],
-    },
-
-    // Pièces jointes
-    attachments: {
-      allowedTypes: ['PDF', 'JPG', 'PNG', 'DOC'],
-      maxSize: 10,
-      storagePath: '/media/documents/',
-    },
-
-    // Sécurité
-    security: {
-      backupFrequency: 'daily',
-      encryptionEnabled: true,
-      jwtRequired: true,
-      passwordMinLength: 8,
-      passwordRequireUppercase: true,
-      passwordRequireNumbers: true,
-      passwordRequireSpecial: true,
-    },
+  
+  const [activeTab, setActiveTab] = useState<'compte' | 'apparence' | 'notifications' | 'securite'>('apparence');
+  const [showPassword, setShowPassword] = useState(false);
+  const [saving, setSaving] = useState(false);
+  
+  // État local pour le formulaire de changement de mot de passe
+  const [passwordForm, setPasswordForm] = useState({
+    ancien: '',
+    nouveau: '',
+    confirmation: '',
   });
 
-  // Données mockées
-  const [dossierTypes, setDossierTypes] = useState([
-    { id: 1, name: 'Promotion', description: 'Demande de promotion', required: true, iaEnabled: true, fields: ['nom', 'prenom', 'grade_actuel', 'grade_demande'] },
-    { id: 2, name: 'Mutation', description: 'Demande de mutation', required: true, iaEnabled: true, fields: ['nom', 'prenom', 'etablissement_actuel', 'etablissement_demande'] },
-    { id: 3, name: 'Congé', description: 'Demande de congé', required: true, iaEnabled: false, fields: ['nom', 'prenom', 'date_debut', 'date_fin'] },
-    { id: 4, name: 'Retraite', description: 'Demande de retraite', required: true, iaEnabled: true, fields: ['nom', 'prenom', 'date_naissance', 'date_entree'] },
-  ]);
-
-  const [services, setServices] = useState([
-    { id: 1, name: 'DREN Analamanga', responsable: 'Rakoto Jean', email: 'dren.analamanga@education.mg' },
-    { id: 2, name: 'MEN Cabinet', responsable: 'Rasoa Marie', email: 'men.cabinet@education.mg' },
-    { id: 3, name: 'FOP Antananarivo', responsable: 'Rabe Paul', email: 'fop.tana@education.mg' },
-    { id: 4, name: 'Finance MEN', responsable: 'Randria Faly', email: 'finance@education.mg' },
-  ]);
-
-  const [roles, setRoles] = useState([
-    { id: 1, name: 'ADMIN', description: 'Administrateur système', permissions: ['all'] },
-    { id: 2, name: 'DREN', description: 'Direction Régionale', permissions: ['view_dossiers', 'validate_dren'] },
-    { id: 3, name: 'MEN', description: 'Ministère', permissions: ['view_dossiers', 'validate_men'] },
-    { id: 4, name: 'FOP', description: 'Formation Pro', permissions: ['view_dossiers', 'validate_fop'] },
-    { id: 5, name: 'FINANCE', description: 'Finance', permissions: ['view_dossiers', 'validate_finance'] },
-    { id: 6, name: 'UTILISATEUR', description: 'Utilisateur standard', permissions: ['create_dossiers', 'view_own_dossiers'] },
-  ]);
-
-  const [workflowSteps, setWorkflowSteps] = useState([
-    { id: 1, step: 'Intéressé', role: 'UTILISATEUR', maxDays: 5, active: true, order: 1 },
-    { id: 2, step: 'DREN', role: 'DREN', maxDays: 7, active: true, order: 2 },
-    { id: 3, step: 'MEN', role: 'MEN', maxDays: 5, active: true, order: 3 },
-    { id: 4, step: 'FOP', role: 'FOP', maxDays: 7, active: true, order: 4 },
-    { id: 5, step: 'Finance', role: 'FINANCE', maxDays: 5, active: true, order: 5 },
-  ]);
-
-  const [logs, setLogs] = useState([
-    { id: 1, date: '2024-03-05 09:30:45', user: 'admin@example.com', action: 'Connexion', section: 'Auth', status: 'success' },
-    { id: 2, date: '2024-03-05 09:15:22', user: 'dren@example.com', action: 'Validation', dossier: 'DOS-2024-001', status: 'success' },
-    { id: 3, date: '2024-03-05 08:45:10', user: 'user@example.com', action: 'Tentative connexion', section: 'Auth', status: 'error' },
-    { id: 4, date: '2024-03-04 16:30:00', user: 'men@example.com', action: 'Modification', dossier: 'DOS-2024-002', status: 'warning' },
-    { id: 5, date: '2024-03-04 14:15:33', user: 'fop@example.com', action: 'Création', dossier: 'DOS-2024-005', status: 'success' },
-  ]);
-
-  const tabs = [
-    { id: 'general', label: 'Général', icon: SettingsIcon },
-    { id: 'types', label: 'Types de Dossiers', icon: FileText },
-    { id: 'services', label: 'Services', icon: Users },
-    { id: 'roles', label: 'Rôles & Permissions', icon: Shield },
-    { id: 'workflow', label: 'Workflow', icon: Activity },
-    { id: 'notifications', label: 'Notifications', icon: Bell },
-    { id: 'ia', label: 'IA Prédictive', icon: Brain },
-    { id: 'attachments', label: 'Pièces Jointes', icon: Paperclip },
-    { id: 'security', label: 'Sauvegarde & Sécurité', icon: Database },
-    { id: 'logs', label: 'Logs', icon: Terminal },
-  ];
-
-  const sidebarItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
-    { id: 'types', label: 'Types de Dossiers', icon: FileText },
-    { id: 'services', label: 'Services', icon: Users },
-    { id: 'roles', label: 'Rôles & Permissions', icon: Shield },
-    { id: 'workflow', label: 'Workflow', icon: Activity },
-    { id: 'notifications', label: 'Notifications', icon: Bell },
-    { id: 'ia', label: 'IA Prédictive', icon: Brain },
-    { id: 'attachments', label: 'Pièces Jointes', icon: Paperclip },
-    { id: 'security', label: 'Sauvegarde & Sécurité', icon: Database },
-    { id: 'logs', label: 'Logs', icon: Terminal },
-    { id: 'logout', label: 'Déconnexion', icon: LogOut, isLogout: true },
-  ];
-
-  const handleSave = (section: string) => {
-    toast.success(`Paramètres ${section} enregistrés avec succès`);
+  // ==================== HANDLERS APPARENCE ====================
+  const handleThemeChange = (theme: 'clair' | 'sombre' | 'systeme') => {
+    dispatch(updateTheme(theme));
+    toast.success(`Thème ${theme === 'clair' ? 'clair' : theme === 'sombre' ? 'sombre' : 'système'} activé`);
   };
 
-  const handleSaveAll = () => {
-    toast.success('Tous les paramètres ont été enregistrés avec succès');
+  const handleThemeCouleurChange = (color: 'vert' | 'bleu' | 'violet' | 'orange') => {
+    dispatch(updateThemeCouleur(color));
+    toast.success(`Couleur ${color} appliquée`);
   };
 
-  const handleAdd = (type: string) => {
-    setShowPopup(type);
-    setEditItem(null);
+  const handlePoliceChange = (police: 'inter' | 'system' | 'arial' | 'roboto') => {
+    dispatch(updatePolice(police));
+    toast.success('Police modifiée');
   };
 
-  const handleEdit = (type: string, item: any) => {
-    setShowPopup(type);
-    setEditItem(item);
+  const handleTaillePoliceChange = (taille: 'petit' | 'medium' | 'grand') => {
+    dispatch(updateTaillePolice(taille));
+    toast.success(`Taille ${taille} appliquée`);
   };
 
-  const handleDelete = (type: string, id: number) => {
-    if (confirm('Êtes-vous sûr de vouloir supprimer cet élément ?')) {
-      toast.success('Élément supprimé avec succès');
+  const handleDensiteChange = (densite: 'compact' | 'confortable' | 'large') => {
+    dispatch(updateDensite(densite));
+    toast.success(`Densité ${densite} appliquée`);
+  };
+
+  const handleAnimationsToggle = () => {
+    dispatch(toggleAnimations(!settings.animations));
+    toast.success(settings.animations ? 'Animations désactivées' : 'Animations activées');
+  };
+
+  // ==================== HANDLERS NOTIFICATIONS ====================
+  const handleNotificationChange = (key: keyof typeof settings.notifications, value: any) => {
+    dispatch(updateNotifications({ [key]: value }));
+    toast.success('Préférence enregistrée');
+  };
+
+  // ==================== HANDLER SECURITE ====================
+  const handleChangePassword = () => {
+    if (passwordForm.nouveau !== passwordForm.confirmation) {
+      toast.error('Les mots de passe ne correspondent pas');
+      return;
+    }
+    if (passwordForm.nouveau.length < 8) {
+      toast.error('Le mot de passe doit contenir au moins 8 caractères');
+      return;
+    }
+    
+    setSaving(true);
+    setTimeout(() => {
+      toast.success('Mot de passe modifié avec succès');
+      setPasswordForm({ ancien: '', nouveau: '', confirmation: '' });
+      setSaving(false);
+    }, 1000);
+  };
+
+  const handleAutoLockChange = () => {
+    dispatch(updateSecurity({ autoLock: !settings.autoLock }));
+    toast.success(settings.autoLock ? 'Verrouillage automatique désactivé' : 'Verrouillage automatique activé');
+  };
+
+  const handleAutoLockDelayChange = (delay: number) => {
+    dispatch(updateSecurity({ autoLockDelay: delay }));
+    toast.success(`Délai modifié: ${delay} minutes`);
+  };
+
+  // ==================== RESET ====================
+  const handleResetAll = () => {
+    if (confirm('⚠️ Réinitialiser tous les paramètres ? Cette action est irréversible.')) {
+      dispatch(resetSettings());
+      toast.success('Tous les paramètres ont été réinitialisés');
+      setTimeout(() => window.location.reload(), 1000);
     }
   };
 
-  const handleToggle = (setting: string) => {
-    toast.success('Paramètre mis à jour');
-  };
+  // ==================== TABS ====================
+  const tabs = [
+    { id: 'apparence', label: 'Apparence', icon: Palette, description: 'Thème, couleurs, police' },
+    { id: 'notifications', label: 'Notifications', icon: Bell, description: 'Alertes et rappels' },
+    { id: 'securite', label: 'Sécurité', icon: Lock, description: 'Mot de passe, sessions' },
+    { id: 'compte', label: 'Mon compte', icon: User, description: 'Informations personnelles' },
+  ];
 
+  // ==================== RENDU ====================
   return (
-    <div className="flex h-screen bg-gray-100">
-      {/* Sidebar */}
-      <aside className="w-64 bg-white border-r border-gray-200 shadow-lg">
-        <div className="p-4 border-b border-gray-200">
-          <h2 className="text-xl font-bold text-marine-600">Paramètres</h2>
-        </div>
-        <nav className="p-2">
-          <ul className="space-y-1">
-            {sidebarItems.map((item) => (
-              <li key={item.id}>
+    <div className="max-w-5xl mx-auto space-y-6">
+      {/* En-tête */}
+      <div>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+          <SettingsIcon className="w-6 h-6" style={{ color: 'var(--color-primary-500)' }} />
+          Paramètres
+        </h1>
+        <p className="text-gray-600 dark:text-gray-400 mt-1">
+          Personnalisez votre expérience
+        </p>
+      </div>
+
+      {/* Bandeau aperçu en direct */}
+      <div className="rounded-xl p-4" style={{ background: 'var(--color-primary-50)', backgroundColor: 'rgba(var(--color-primary-500), 0.1)' }}>
+        <p className="text-sm" style={{ color: 'var(--color-primary-700)' }}>
+          ✨ Aperçu en direct : Les changements s'appliquent immédiatement
+        </p>
+      </div>
+
+      {/* Onglets */}
+      <div className="flex flex-wrap gap-1 bg-white dark:bg-gray-800 rounded-xl p-1 shadow-soft">
+        {tabs.map(tab => {
+          const Icon = tab.icon;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as any)}
+              className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-medium transition-all ${
+                activeTab === tab.id
+                  ? 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 shadow-sm'
+                  : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+              }`}
+            >
+              <Icon size={18} />
+              <div className="hidden md:block text-left">
+                <div className="text-sm font-medium">{tab.label}</div>
+                <div className="text-xs opacity-70">{tab.description}</div>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* ==================== ONGLET APPARENCE ==================== */}
+      {activeTab === 'apparence' && (
+        <div className="space-y-6">
+          {/* Thème */}
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-soft p-6">
+            <h3 className="font-medium text-gray-900 dark:text-white mb-3">Thème</h3>
+            <div className="grid grid-cols-3 gap-3">
+              <button
+                onClick={() => handleThemeChange('clair')}
+                className={`p-3 rounded-lg border-2 flex flex-col items-center gap-2 transition-all ${
+                  settings.theme === 'clair'
+                    ? 'border-green-500 bg-green-50 dark:bg-green-900/20'
+                    : 'border-gray-200 dark:border-gray-700'
+                }`}
+              >
+                <Sun size={24} className={settings.theme === 'clair' ? 'text-green-500' : 'text-gray-500'} />
+                <span className="text-sm">Clair</span>
+              </button>
+              <button
+                onClick={() => handleThemeChange('sombre')}
+                className={`p-3 rounded-lg border-2 flex flex-col items-center gap-2 transition-all ${
+                  settings.theme === 'sombre'
+                    ? 'border-green-500 bg-green-50 dark:bg-green-900/20'
+                    : 'border-gray-200 dark:border-gray-700'
+                }`}
+              >
+                <Moon size={24} className={settings.theme === 'sombre' ? 'text-green-500' : 'text-gray-500'} />
+                <span className="text-sm">Sombre</span>
+              </button>
+              <button
+                onClick={() => handleThemeChange('systeme')}
+                className={`p-3 rounded-lg border-2 flex flex-col items-center gap-2 transition-all ${
+                  settings.theme === 'systeme'
+                    ? 'border-green-500 bg-green-50 dark:bg-green-900/20'
+                    : 'border-gray-200 dark:border-gray-700'
+                }`}
+              >
+                <Laptop size={24} className={settings.theme === 'systeme' ? 'text-green-500' : 'text-gray-500'} />
+                <span className="text-sm">Système</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Couleur principale */}
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-soft p-6">
+            <h3 className="font-medium text-gray-900 dark:text-white mb-3">Couleur principale</h3>
+            <div className="grid grid-cols-4 gap-3">
+              {[
+                { id: 'vert', color: 'bg-green-500', label: 'Vert' },
+                { id: 'bleu', color: 'bg-blue-500', label: 'Bleu' },
+                { id: 'violet', color: 'bg-purple-500', label: 'Violet' },
+                { id: 'orange', color: 'bg-orange-500', label: 'Orange' },
+              ].map(c => (
                 <button
-                  onClick={() => {
-                    if (item.isLogout) {
-                      // Logout logic
-                    } else {
-                      setActiveTab(item.id);
-                    }
-                  }}
-                  className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
-                    activeTab === item.id && !item.isLogout
-                      ? 'bg-marine-50 text-marine-600'
-                      : item.isLogout
-                      ? 'text-red-600 hover:bg-red-50'
-                      : 'text-gray-700 hover:bg-gray-100'
+                  key={c.id}
+                  onClick={() => handleThemeCouleurChange(c.id as any)}
+                  className={`p-3 rounded-lg border-2 flex flex-col items-center gap-2 transition-all ${
+                    settings.themeCouleur === c.id
+                      ? 'border-gray-900 dark:border-white'
+                      : 'border-transparent'
                   }`}
                 >
-                  <item.icon size={18} />
-                  <span>{item.label}</span>
+                  <div className={`w-10 h-10 rounded-full ${c.color} shadow-md`} />
+                  <span className="text-sm">{c.label}</span>
                 </button>
-              </li>
-            ))}
-          </ul>
-        </nav>
-      </aside>
-
-      {/* Main Content */}
-      <main className="flex-1 overflow-y-auto p-8">
-        <div className="max-w-6xl mx-auto space-y-8">
-          <h1 className="text-2xl font-bold text-gray-900 mb-6">Paramètres</h1>
-
-          {/* A. Paramètres Généraux */}
-          {activeTab === 'general' && (
-            <section className="bg-white rounded-xl shadow-card p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <SettingsIcon size={20} className="text-marine-500" />
-                Paramètres Généraux
-              </h2>
-              
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="label">Nom de l'application</label>
-                    <input
-                      type="text"
-                      value={settings.appName}
-                      onChange={(e) => setSettings({ ...settings, appName: e.target.value })}
-                      className="input"
-                    />
-                  </div>
-                  <div>
-                    <label className="label">Logo</label>
-                    <div className="flex items-center gap-2">
-                      <input type="text" value={settings.logo} className="input" />
-                      <button className="btn-secondary">
-                        <Upload size={18} />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="label">Langue</label>
-                    <select
-                      value={settings.language}
-                      onChange={(e) => setSettings({ ...settings, language: e.target.value })}
-                      className="input"
-                    >
-                      <option value="fr">Français</option>
-                      <option value="mg">Malagasy</option>
-                      <option value="en">English</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="label">Fuseau horaire</label>
-                    <select
-                      value={settings.timezone}
-                      onChange={(e) => setSettings({ ...settings, timezone: e.target.value })}
-                      className="input"
-                    >
-                      <option value="Indian/Antananarivo">Indian/Antananarivo (UTC+3)</option>
-                      <option value="UTC">UTC</option>
-                      <option value="Europe/Paris">Europe/Paris</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="label">Format date</label>
-                    <select
-                      value={settings.dateFormat}
-                      onChange={(e) => setSettings({ ...settings, dateFormat: e.target.value })}
-                      className="input"
-                    >
-                      <option value="dd/mm/yyyy">31/12/2024</option>
-                      <option value="mm/dd/yyyy">12/31/2024</option>
-                      <option value="yyyy-mm-dd">2024-12-31</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="label">Format heure</label>
-                    <select
-                      value={settings.timeFormat}
-                      onChange={(e) => setSettings({ ...settings, timeFormat: e.target.value })}
-                      className="input"
-                    >
-                      <option value="24h">24h</option>
-                      <option value="12h">12h (AM/PM)</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="flex justify-end">
-                  <button onClick={() => handleSave('généraux')} className="btn-primary flex items-center gap-2">
-                    <Save size={18} />
-                    Enregistrer
-                  </button>
-                </div>
+              ))}
+            </div>
+            {/* Aperçu des boutons */}
+            <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Aperçu :</p>
+              <div className="flex gap-2">
+                <button className="btn-primary px-4 py-2 rounded-lg text-white text-sm">Bouton principal</button>
+                <div className="w-8 h-8 rounded-full" style={{ backgroundColor: 'var(--color-primary-500)' }} />
+                <div className="w-8 h-8 rounded-full" style={{ backgroundColor: 'var(--color-primary-600)' }} />
               </div>
-            </section>
-          )}
+            </div>
+          </div>
 
-          {/* B. Gestion des Types de Dossiers */}
-          {activeTab === 'types' && (
-            <section className="bg-white rounded-xl shadow-card p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                  <FileText size={20} className="text-marine-500" />
-                  Gestion des Types de Dossiers
-                </h2>
-                <button onClick={() => handleAdd('type')} className="btn-primary flex items-center gap-2">
-                  <Plus size={18} />
-                  Ajouter un type
-                </button>
+          {/* Police */}
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-soft p-6">
+            <h3 className="font-medium text-gray-900 dark:text-white mb-3">Police</h3>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                onClick={() => handlePoliceChange('inter')}
+                className={`p-3 rounded-lg border-2 text-left transition-all ${
+                  settings.police === 'inter'
+                    ? 'border-green-500 bg-green-50 dark:bg-green-900/20'
+                    : 'border-gray-200 dark:border-gray-700'
+                }`}
+              >
+                <p className="font-medium" style={{ fontFamily: "'Inter', sans-serif" }}>Inter</p>
+                <p className="text-sm text-gray-500" style={{ fontFamily: "'Inter', sans-serif" }}>Exemple de texte</p>
+              </button>
+              <button
+                onClick={() => handlePoliceChange('system')}
+                className={`p-3 rounded-lg border-2 text-left transition-all ${
+                  settings.police === 'system'
+                    ? 'border-green-500 bg-green-50 dark:bg-green-900/20'
+                    : 'border-gray-200 dark:border-gray-700'
+                }`}
+              >
+                <p className="font-medium" style={{ fontFamily: 'system-ui' }}>Système</p>
+                <p className="text-sm text-gray-500" style={{ fontFamily: 'system-ui' }}>Exemple de texte</p>
+              </button>
+              <button
+                onClick={() => handlePoliceChange('arial')}
+                className={`p-3 rounded-lg border-2 text-left transition-all ${
+                  settings.police === 'arial'
+                    ? 'border-green-500 bg-green-50 dark:bg-green-900/20'
+                    : 'border-gray-200 dark:border-gray-700'
+                }`}
+              >
+                <p className="font-medium" style={{ fontFamily: 'Arial' }}>Arial</p>
+                <p className="text-sm text-gray-500" style={{ fontFamily: 'Arial' }}>Exemple de texte</p>
+              </button>
+              <button
+                onClick={() => handlePoliceChange('roboto')}
+                className={`p-3 rounded-lg border-2 text-left transition-all ${
+                  settings.police === 'roboto'
+                    ? 'border-green-500 bg-green-50 dark:bg-green-900/20'
+                    : 'border-gray-200 dark:border-gray-700'
+                }`}
+              >
+                <p className="font-medium" style={{ fontFamily: "'Roboto', sans-serif" }}>Roboto</p>
+                <p className="text-sm text-gray-500" style={{ fontFamily: "'Roboto', sans-serif" }}>Exemple de texte</p>
+              </button>
+            </div>
+          </div>
+
+          {/* Taille police */}
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-soft p-6">
+            <h3 className="font-medium text-gray-900 dark:text-white mb-3">Taille du texte</h3>
+            <div className="flex gap-2">
+              <button
+                onClick={() => handleTaillePoliceChange('petit')}
+                className={`flex-1 py-2 rounded-lg border transition-all ${
+                  settings.taillePolice === 'petit'
+                    ? 'border-green-500 bg-green-50 dark:bg-green-900/20 text-green-600'
+                    : 'border-gray-200 dark:border-gray-700'
+                }`}
+              >
+                Petit
+              </button>
+              <button
+                onClick={() => handleTaillePoliceChange('medium')}
+                className={`flex-1 py-2 rounded-lg border transition-all ${
+                  settings.taillePolice === 'medium'
+                    ? 'border-green-500 bg-green-50 dark:bg-green-900/20 text-green-600'
+                    : 'border-gray-200 dark:border-gray-700'
+                }`}
+              >
+                Moyen
+              </button>
+              <button
+                onClick={() => handleTaillePoliceChange('grand')}
+                className={`flex-1 py-2 rounded-lg border transition-all ${
+                  settings.taillePolice === 'grand'
+                    ? 'border-green-500 bg-green-50 dark:bg-green-900/20 text-green-600'
+                    : 'border-gray-200 dark:border-gray-700'
+                }`}
+              >
+                Grand
+              </button>
+            </div>
+            <p className="mt-3 text-center text-gray-600 dark:text-gray-400" style={{ fontSize: 'var(--font-size-base)' }}>
+              Texte de démonstration à cette taille
+            </p>
+          </div>
+
+          {/* Densité */}
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-soft p-6">
+            <h3 className="font-medium text-gray-900 dark:text-white mb-3">Densité d'affichage</h3>
+            <div className="flex gap-2">
+              <button
+                onClick={() => handleDensiteChange('compact')}
+                className={`flex-1 py-2 rounded-lg border transition-all ${
+                  settings.densite === 'compact'
+                    ? 'border-green-500 bg-green-50 dark:bg-green-900/20 text-green-600'
+                    : 'border-gray-200 dark:border-gray-700'
+                }`}
+              >
+                Compact
+              </button>
+              <button
+                onClick={() => handleDensiteChange('confortable')}
+                className={`flex-1 py-2 rounded-lg border transition-all ${
+                  settings.densite === 'confortable'
+                    ? 'border-green-500 bg-green-50 dark:bg-green-900/20 text-green-600'
+                    : 'border-gray-200 dark:border-gray-700'
+                }`}
+              >
+                Confortable
+              </button>
+              <button
+                onClick={() => handleDensiteChange('large')}
+                className={`flex-1 py-2 rounded-lg border transition-all ${
+                  settings.densite === 'large'
+                    ? 'border-green-500 bg-green-50 dark:bg-green-900/20 text-green-600'
+                    : 'border-gray-200 dark:border-gray-700'
+                }`}
+              >
+                Large
+              </button>
+            </div>
+            <div className="mt-3 flex gap-2">
+              <div className="p-3 border rounded-lg bg-gray-50 dark:bg-gray-700">Élément 1</div>
+              <div className="p-3 border rounded-lg bg-gray-50 dark:bg-gray-700">Élément 2</div>
+            </div>
+          </div>
+
+          {/* Animations */}
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-soft p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-medium text-gray-900 dark:text-white">Animations</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Activer les transitions et animations</p>
               </div>
-
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">Nom</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">Description</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">Obligatoire</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">IA Prédictive</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200">
-                    {dossierTypes.map((type) => (
-                      <tr key={type.id} className="hover:bg-gray-50">
-                        <td className="px-4 py-3 text-sm font-medium text-gray-900">{type.name}</td>
-                        <td className="px-4 py-3 text-sm text-gray-600">{type.description}</td>
-                        <td className="px-4 py-3">
-                          {type.required ? (
-                            <span className="badge-success">Oui</span>
-                          ) : (
-                            <span className="badge-warning">Non</span>
-                          )}
-                        </td>
-                        <td className="px-4 py-3">
-                          {type.iaEnabled ? (
-                            <span className="badge-info">Activée</span>
-                          ) : (
-                            <span className="badge-default">Désactivée</span>
-                          )}
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-2">
-                            <button
-                              onClick={() => handleEdit('type', type)}
-                              className="p-1 text-blue-600 hover:bg-blue-50 rounded"
-                            >
-                              <Edit size={16} />
-                            </button>
-                            <button
-                              onClick={() => handleDelete('type', type.id)}
-                              className="p-1 text-red-600 hover:bg-red-50 rounded"
-                            >
-                              <Trash2 size={16} />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </section>
-          )}
-
-          {/* C. Gestion des Services */}
-          {activeTab === 'services' && (
-            <section className="bg-white rounded-xl shadow-card p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                  <Users size={20} className="text-marine-500" />
-                  Gestion des Services
-                </h2>
-                <button onClick={() => handleAdd('service')} className="btn-primary flex items-center gap-2">
-                  <Plus size={18} />
-                  Ajouter un service
-                </button>
-              </div>
-
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">Nom du Service</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">Responsable</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">Email</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200">
-                    {services.map((service) => (
-                      <tr key={service.id} className="hover:bg-gray-50">
-                        <td className="px-4 py-3 text-sm font-medium text-gray-900">{service.name}</td>
-                        <td className="px-4 py-3 text-sm text-gray-600">{service.responsable}</td>
-                        <td className="px-4 py-3 text-sm text-gray-600">{service.email}</td>
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-2">
-                            <button className="p-1 text-blue-600 hover:bg-blue-50 rounded">
-                              <Edit size={16} />
-                            </button>
-                            <button className="p-1 text-red-600 hover:bg-red-50 rounded">
-                              <Trash2 size={16} />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </section>
-          )}
-
-          {/* D. Gestion des Rôles & Permissions */}
-          {activeTab === 'roles' && (
-            <section className="bg-white rounded-xl shadow-card p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                  <Shield size={20} className="text-marine-500" />
-                  Gestion des Rôles & Permissions
-                </h2>
-                <button onClick={() => handleAdd('role')} className="btn-primary flex items-center gap-2">
-                  <Plus size={18} />
-                  Ajouter un rôle
-                </button>
-              </div>
-
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">Nom du rôle</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">Description</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">Permissions</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200">
-                    {roles.map((role) => (
-                      <tr key={role.id} className="hover:bg-gray-50">
-                        <td className="px-4 py-3 text-sm font-medium text-gray-900">{role.name}</td>
-                        <td className="px-4 py-3 text-sm text-gray-600">{role.description}</td>
-                        <td className="px-4 py-3 text-sm text-gray-600">
-                          {role.permissions.length > 1 ? `${role.permissions.length} permissions` : role.permissions[0]}
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-2">
-                            <button className="p-1 text-blue-600 hover:bg-blue-50 rounded">
-                              <Edit size={16} />
-                            </button>
-                            <button className="p-1 text-red-600 hover:bg-red-50 rounded">
-                              <Trash2 size={16} />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </section>
-          )}
-
-          {/* E. Configuration du Workflow */}
-          {activeTab === 'workflow' && (
-            <section className="bg-white rounded-xl shadow-card p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <Activity size={20} className="text-marine-500" />
-                Configuration du Workflow
-              </h2>
-
-              <div className="space-y-4">
-                {workflowSteps.sort((a, b) => a.order - b.order).map((step, index) => (
-                  <div key={step.id} className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg">
-                    <Move className="w-5 h-5 text-gray-400 cursor-move" />
-                    <span className="w-8 h-8 bg-marine-100 text-marine-600 rounded-full flex items-center justify-center">
-                      {step.order}
-                    </span>
-                    <div className="flex-1 grid grid-cols-4 gap-4">
-                      <input value={step.step} className="input" />
-                      <select value={step.role} className="input">
-                        <option value="UTILISATEUR">UTILISATEUR</option>
-                        <option value="DREN">DREN</option>
-                        <option value="MEN">MEN</option>
-                        <option value="FOP">FOP</option>
-                        <option value="FINANCE">FINANCE</option>
-                      </select>
-                      <input type="number" value={step.maxDays} className="input" />
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => handleToggle(`workflow-${step.id}`)}
-                          className={`w-12 h-6 rounded-full transition-colors ${step.active ? 'bg-marine-500' : 'bg-gray-300'}`}
-                        >
-                          <div className={`w-5 h-5 bg-white rounded-full shadow transform transition-transform ${step.active ? 'translate-x-6' : 'translate-x-1'}`} />
-                        </button>
-                        <button className="p-1 text-red-600 hover:bg-red-50 rounded">
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-
-                <div className="flex justify-end gap-2 pt-4">
-                  <button onClick={() => handleAdd('workflow')} className="btn-secondary flex items-center gap-2">
-                    <Plus size={18} />
-                    Ajouter une étape
-                  </button>
-                  <button onClick={() => handleSave('workflow')} className="btn-primary flex items-center gap-2">
-                    <Save size={18} />
-                    Enregistrer workflow
-                  </button>
-                </div>
-              </div>
-            </section>
-          )}
-
-          {/* F. Paramètres des Notifications */}
-          {activeTab === 'notifications' && (
-            <section className="bg-white rounded-xl shadow-card p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <Bell size={20} className="text-marine-500" />
-                Paramètres des Notifications
-              </h2>
-
-              <div className="space-y-4">
-                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                  <div>
-                    <p className="font-medium text-gray-700">Activer les notifications</p>
-                    <p className="text-sm text-gray-500">Recevoir des notifications système</p>
-                  </div>
-                  <button
-                    onClick={() => handleToggle('notifications')}
-                    className={`w-12 h-6 rounded-full transition-colors ${settings.notifications.enabled ? 'bg-marine-500' : 'bg-gray-300'}`}
-                  >
-                    <div className={`w-5 h-5 bg-white rounded-full shadow transform transition-transform ${settings.notifications.enabled ? 'translate-x-6' : 'translate-x-1'}`} />
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-3 gap-4">
-                  <label className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
-                    <input
-                      type="checkbox"
-                      checked={settings.notifications.email}
-                      onChange={() => handleToggle('notifications-email')}
-                      className="w-4 h-4 text-marine-500 rounded"
-                    />
-                    <Mail size={18} className="text-gray-500" />
-                    <span>Email</span>
-                  </label>
-
-                  <label className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
-                    <input
-                      type="checkbox"
-                      checked={settings.notifications.sms}
-                      onChange={() => handleToggle('notifications-sms')}
-                      className="w-4 h-4 text-marine-500 rounded"
-                    />
-                    <Smartphone size={18} className="text-gray-500" />
-                    <span>SMS</span>
-                  </label>
-
-                  <label className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
-                    <input
-                      type="checkbox"
-                      checked={settings.notifications.inApp}
-                      onChange={() => handleToggle('notifications-inapp')}
-                      className="w-4 h-4 text-marine-500 rounded"
-                    />
-                    <MessageSquare size={18} className="text-gray-500" />
-                    <span>In-App</span>
-                  </label>
-                </div>
-
-                <div>
-                  <label className="label">Fréquence</label>
-                  <select
-                    value={settings.notifications.frequency}
-                    onChange={(e) => setSettings({
-                      ...settings,
-                      notifications: { ...settings.notifications, frequency: e.target.value }
-                    })}
-                    className="input"
-                  >
-                    <option value="immediate">Immédiate</option>
-                    <option value="daily">Quotidienne</option>
-                    <option value="weekly">Hebdomadaire</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="label">Destinataires par type</label>
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <span className="w-20 text-sm">DREN</span>
-                      <select className="input flex-1" multiple size={2}>
-                        <option>dren.analamanga@education.mg</option>
-                        <option>dren.atsimo@education.mg</option>
-                      </select>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="w-20 text-sm">MEN</span>
-                      <select className="input flex-1" multiple size={2}>
-                        <option>men.cabinet@education.mg</option>
-                        <option>men.drh@education.mg</option>
-                      </select>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex justify-end">
-                  <button onClick={() => handleSave('notifications')} className="btn-primary flex items-center gap-2">
-                    <Save size={18} />
-                    Enregistrer notifications
-                  </button>
-                </div>
-              </div>
-            </section>
-          )}
-
-          {/* G. Paramètres IA Prédictive */}
-          {activeTab === 'ia' && (
-            <section className="bg-white rounded-xl shadow-card p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <Brain size={20} className="text-marine-500" />
-                Paramètres IA Prédictive
-              </h2>
-
-              <div className="space-y-4">
-                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                  <div>
-                    <p className="font-medium text-gray-700">Activer IA prédictive</p>
-                    <p className="text-sm text-gray-500">Utiliser l'IA pour prédire les délais et risques</p>
-                  </div>
-                  <button
-                    onClick={() => handleToggle('ia')}
-                    className={`w-12 h-6 rounded-full transition-colors ${settings.iaPredictive.enabled ? 'bg-marine-500' : 'bg-gray-300'}`}
-                  >
-                    <div className={`w-5 h-5 bg-white rounded-full shadow transform transition-transform ${settings.iaPredictive.enabled ? 'translate-x-6' : 'translate-x-1'}`} />
-                  </button>
-                </div>
-
-                <div>
-                  <label className="label">Seuil score risque pour alertes (%)</label>
-                  <input
-                    type="range"
-                    min="0"
-                    max="100"
-                    value={settings.iaPredictive.riskThreshold}
-                    onChange={(e) => setSettings({
-                      ...settings,
-                      iaPredictive: { ...settings.iaPredictive, riskThreshold: parseInt(e.target.value) }
-                    })}
-                    className="w-full"
-                  />
-                  <div className="flex justify-between text-sm text-gray-600">
-                    <span>0</span>
-                    <span className="font-medium text-marine-600">{settings.iaPredictive.riskThreshold}%</span>
-                    <span>100</span>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="label">Types de dossiers analysés par IA</label>
-                  <select className="input" multiple size={3}>
-                    <option selected>Promotion</option>
-                    <option selected>Mutation</option>
-                    <option>Congé</option>
-                    <option>Retraite</option>
-                  </select>
-                </div>
-
-                <div className="flex items-center gap-4">
-                  <button className="btn-secondary flex items-center gap-2">
-                    <FileText size={18} />
-                    Voir logs IA
-                  </button>
-                  <button className="btn-secondary flex items-center gap-2">
-                    <RefreshCw size={18} />
-                    Exécuter analyse test
-                  </button>
-                </div>
-
-                <div className="flex justify-end">
-                  <button onClick={() => handleSave('IA')} className="btn-primary flex items-center gap-2">
-                    <Save size={18} />
-                    Enregistrer paramètres IA
-                  </button>
-                </div>
-              </div>
-            </section>
-          )}
-
-          {/* H. Gestion des Pièces Jointes */}
-          {activeTab === 'attachments' && (
-            <section className="bg-white rounded-xl shadow-card p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <Paperclip size={20} className="text-marine-500" />
-                Gestion des Pièces Jointes
-              </h2>
-
-              <div className="space-y-4">
-                <div>
-                  <label className="label">Types de fichiers autorisés</label>
-                  <div className="flex flex-wrap gap-2">
-                    {['PDF', 'JPG', 'PNG', 'DOC', 'XLS'].map((type) => (
-                      <label key={type} className="flex items-center gap-1 p-2 bg-gray-50 rounded-lg">
-                        <input type="checkbox" checked={settings.attachments.allowedTypes.includes(type)} className="w-4 h-4 text-marine-500 rounded" />
-                        <span>.{type.toLowerCase()}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <label className="label">Taille maximale par fichier (MB)</label>
-                  <input
-                    type="number"
-                    value={settings.attachments.maxSize}
-                    onChange={(e) => setSettings({
-                      ...settings,
-                      attachments: { ...settings.attachments, maxSize: parseInt(e.target.value) }
-                    })}
-                    className="input w-48"
-                  />
-                </div>
-
-                <div>
-                  <label className="label">Chemin de stockage</label>
-                  <input
-                    type="text"
-                    value={settings.attachments.storagePath}
-                    onChange={(e) => setSettings({
-                      ...settings,
-                      attachments: { ...settings.attachments, storagePath: e.target.value }
-                    })}
-                    className="input"
-                  />
-                </div>
-
-                <div className="flex justify-end">
-                  <button onClick={() => handleSave('pièces jointes')} className="btn-primary flex items-center gap-2">
-                    <Save size={18} />
-                    Enregistrer paramètres
-                  </button>
-                </div>
-              </div>
-            </section>
-          )}
-
-          {/* I. Sauvegarde & Sécurité */}
-          {activeTab === 'security' && (
-            <section className="bg-white rounded-xl shadow-card p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <Database size={20} className="text-marine-500" />
-                Sauvegarde & Sécurité
-              </h2>
-
-              <div className="space-y-4">
-                <div>
-                  <label className="label">Fréquence sauvegarde automatique</label>
-                  <select
-                    value={settings.security.backupFrequency}
-                    onChange={(e) => setSettings({
-                      ...settings,
-                      security: { ...settings.security, backupFrequency: e.target.value }
-                    })}
-                    className="input"
-                  >
-                    <option value="hourly">Toutes les heures</option>
-                    <option value="daily">Quotidienne</option>
-                    <option value="weekly">Hebdomadaire</option>
-                    <option value="monthly">Mensuelle</option>
-                  </select>
-                </div>
-
-                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                  <div>
-                    <p className="font-medium text-gray-700">Activer cryptage fichiers sensibles</p>
-                    <p className="text-sm text-gray-500">Les fichiers seront chiffrés au repos</p>
-                  </div>
-                  <button
-                    onClick={() => handleToggle('encryption')}
-                    className={`w-12 h-6 rounded-full transition-colors ${settings.security.encryptionEnabled ? 'bg-marine-500' : 'bg-gray-300'}`}
-                  >
-                    <div className={`w-5 h-5 bg-white rounded-full shadow transform transition-transform ${settings.security.encryptionEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
-                  </button>
-                </div>
-
-                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                  <div>
-                    <p className="font-medium text-gray-700">Authentification JWT obligatoire</p>
-                    <p className="text-sm text-gray-500">Toutes les API requièrent un token JWT</p>
-                  </div>
-                  <button
-                    onClick={() => handleToggle('jwt')}
-                    className={`w-12 h-6 rounded-full transition-colors ${settings.security.jwtRequired ? 'bg-marine-500' : 'bg-gray-300'}`}
-                  >
-                    <div className={`w-5 h-5 bg-white rounded-full shadow transform transition-transform ${settings.security.jwtRequired ? 'translate-x-6' : 'translate-x-1'}`} />
-                  </button>
-                </div>
-
-                <div>
-                  <label className="label">Politique de mots de passe</label>
-                  <div className="space-y-2">
-                    <div>
-                      <label className="flex items-center gap-2">
-                        <input
-                          type="number"
-                          value={settings.security.passwordMinLength}
-                          onChange={(e) => setSettings({
-                            ...settings,
-                            security: { ...settings.security, passwordMinLength: parseInt(e.target.value) }
-                          })}
-                          className="input w-24"
-                        />
-                        <span>Longueur minimale</span>
-                      </label>
-                    </div>
-                    <div>
-                      <label className="flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          checked={settings.security.passwordRequireUppercase}
-                          onChange={() => handleToggle('password-uppercase')}
-                          className="w-4 h-4 text-marine-500 rounded"
-                        />
-                        <span>Au moins une majuscule</span>
-                      </label>
-                    </div>
-                    <div>
-                      <label className="flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          checked={settings.security.passwordRequireNumbers}
-                          onChange={() => handleToggle('password-numbers')}
-                          className="w-4 h-4 text-marine-500 rounded"
-                        />
-                        <span>Au moins un chiffre</span>
-                      </label>
-                    </div>
-                    <div>
-                      <label className="flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          checked={settings.security.passwordRequireSpecial}
-                          onChange={() => handleToggle('password-special')}
-                          className="w-4 h-4 text-marine-500 rounded"
-                        />
-                        <span>Au moins un caractère spécial</span>
-                      </label>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex justify-end">
-                  <button onClick={() => handleSave('sécurité')} className="btn-primary flex items-center gap-2">
-                    <Save size={18} />
-                    Sauvegarder et sécuriser
-                  </button>
-                </div>
-              </div>
-            </section>
-          )}
-
-          {/* J. Logs */}
-          {activeTab === 'logs' && (
-            <section className="bg-white rounded-xl shadow-card p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                  <Terminal size={20} className="text-marine-500" />
-                  Logs système
-                </h2>
-                <div className="flex items-center gap-2">
-                  <button className="btn-secondary flex items-center gap-2">
-                    <Download size={18} />
-                    CSV
-                  </button>
-                  <button className="btn-secondary flex items-center gap-2">
-                    <Download size={18} />
-                    PDF
-                  </button>
-                </div>
-              </div>
-
-              <div className="flex gap-4 mb-4">
-                <div className="flex-1 relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
-                  <input
-                    type="text"
-                    placeholder="Rechercher dans les logs..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="input pl-10"
-                  />
-                </div>
-                <select className="input w-48">
-                  <option value="">Tous les utilisateurs</option>
-                  <option>admin@example.com</option>
-                  <option>dren@example.com</option>
-                  <option>men@example.com</option>
-                </select>
-                <select className="input w-40">
-                  <option value="">Toutes les dates</option>
-                  <option>Aujourd'hui</option>
-                  <option>Cette semaine</option>
-                  <option>Ce mois</option>
-                </select>
-              </div>
-
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">Date</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">Utilisateur</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">Action</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">Dossier/Section</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">Statut</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200">
-                    {logs.map((log) => (
-                      <tr key={log.id} className="hover:bg-gray-50">
-                        <td className="px-4 py-3 text-sm text-gray-600">{log.date}</td>
-                        <td className="px-4 py-3 text-sm font-medium text-gray-900">{log.user}</td>
-                        <td className="px-4 py-3 text-sm text-gray-600">{log.action}</td>
-                        <td className="px-4 py-3 text-sm text-gray-600">{log.dossier || log.section}</td>
-                        <td className="px-4 py-3">
-                          {log.status === 'success' && <span className="badge-success">Succès</span>}
-                          {log.status === 'error' && <span className="badge-error">Erreur</span>}
-                          {log.status === 'warning' && <span className="badge-warning">Warning</span>}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </section>
-          )}
-
-          {/* Bouton Enregistrer tous les paramètres */}
-          <div className="flex justify-end pt-6 border-t border-gray-200">
-            <button onClick={handleSaveAll} className="btn-primary flex items-center gap-2 px-8 py-3 text-lg">
-              <Save size={20} />
-              Enregistrer tous les paramètres
-            </button>
+              <button
+                onClick={handleAnimationsToggle}
+                className={`w-12 h-6 rounded-full transition-colors ${
+                  settings.animations ? 'bg-green-600' : 'bg-gray-400'
+                }`}
+              >
+                <div className={`w-5 h-5 bg-white rounded-full shadow transform transition-transform ${
+                  settings.animations ? 'translate-x-6' : 'translate-x-1'
+                }`} />
+              </button>
+            </div>
           </div>
         </div>
-      </main>
+      )}
 
-      {/* Popups */}
-      {showPopup === 'type' && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl p-6 max-w-md w-full">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
-              {editItem ? 'Modifier' : 'Ajouter'} un type de dossier
-            </h3>
-            
-            <div className="space-y-4">
-              <div>
-                <label className="label">Nom du type</label>
-                <input type="text" className="input" defaultValue={editItem?.name} />
-              </div>
-              
-              <div>
-                <label className="label">Description</label>
-                <textarea className="input" rows={3} defaultValue={editItem?.description} />
-              </div>
+      {/* ==================== ONGLET NOTIFICATIONS ==================== */}
+      {activeTab === 'notifications' && (
+        <div className="space-y-6">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-soft p-6">
+            <h3 className="font-medium text-gray-900 dark:text-white mb-4">Canaux de notification</h3>
+            <div className="space-y-3">
+              {[
+                { key: 'email', icon: Mail, label: 'Email', desc: 'Notifications par email' },
+                { key: 'sms', icon: Smartphone, label: 'SMS', desc: 'Notifications par SMS' },
+                { key: 'inApp', icon: Bell, label: 'In-App', desc: 'Notifications dans l\'application' },
+                { key: 'desktop', icon: Monitor, label: 'Bureau', desc: 'Notifications push sur ordinateur' },
+              ].map(item => (
+                <div key={item.key} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <item.icon size={20} className="text-green-500" />
+                    <div>
+                      <p className="font-medium text-gray-900 dark:text-white">{item.label}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">{item.desc}</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handleNotificationChange(item.key as any, !settings.notifications[item.key as keyof typeof settings.notifications])}
+                    className={`w-12 h-6 rounded-full transition-colors ${
+                      settings.notifications[item.key as keyof typeof settings.notifications] ? 'bg-green-600' : 'bg-gray-400'
+                    }`}
+                  >
+                    <div className={`w-5 h-5 bg-white rounded-full shadow transform transition-transform ${
+                      settings.notifications[item.key as keyof typeof settings.notifications] ? 'translate-x-6' : 'translate-x-1'
+                    }`} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
 
-              <div>
-                <label className="flex items-center gap-2">
-                  <input type="checkbox" defaultChecked={editItem?.iaEnabled} className="w-4 h-4 text-marine-500 rounded" />
-                  <span>Activer IA prédictive</span>
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-soft p-6">
+            <h3 className="font-medium text-gray-900 dark:text-white mb-4">Événements</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {[
+                { key: 'dossierCree', label: 'Création de dossier', icon: FileText },
+                { key: 'dossierValide', label: 'Validation de dossier', icon: CheckCircle },
+                { key: 'dossierRejete', label: 'Rejet de dossier', icon: AlertCircle },
+                { key: 'dossierTransfere', label: 'Transfert de dossier', icon: RefreshCw },
+                { key: 'rappelDelai', label: 'Rappel de délai', icon: Clock },
+              ].map(item => (
+                <label key={item.key} className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={settings.notifications[item.key as keyof typeof settings.notifications] as boolean}
+                    onChange={() => handleNotificationChange(item.key as any, !settings.notifications[item.key as keyof typeof settings.notifications])}
+                    className="w-4 h-4 rounded text-green-600"
+                  />
+                  <item.icon size={16} className="text-gray-500" />
+                  <span className="text-sm text-gray-700 dark:text-gray-300">{item.label}</span>
                 </label>
-              </div>
+              ))}
+            </div>
+          </div>
 
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-soft p-6">
+            <h3 className="font-medium text-gray-900 dark:text-white mb-4">Fréquence</h3>
+            <select
+              value={settings.notifications.frequence}
+              onChange={(e) => handleNotificationChange('frequence', e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+            >
+              <option value="immediate">Immédiate</option>
+              <option value="quotidienne">Résumé quotidien</option>
+              <option value="hebdomadaire">Résumé hebdomadaire</option>
+            </select>
+          </div>
+        </div>
+      )}
+
+      {/* ==================== ONGLET SÉCURITÉ ==================== */}
+      {activeTab === 'securite' && (
+        <div className="space-y-6">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-soft p-6">
+            <h3 className="font-medium text-gray-900 dark:text-white mb-4">Changer le mot de passe</h3>
+            <div className="space-y-3">
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={passwordForm.ancien}
+                  onChange={(e) => setPasswordForm({ ...passwordForm, ancien: e.target.value })}
+                  placeholder="Mot de passe actuel"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white pr-10"
+                />
+                <button
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500"
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+              <input
+                type="password"
+                value={passwordForm.nouveau}
+                onChange={(e) => setPasswordForm({ ...passwordForm, nouveau: e.target.value })}
+                placeholder="Nouveau mot de passe (min. 8 caractères)"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              />
+              <input
+                type="password"
+                value={passwordForm.confirmation}
+                onChange={(e) => setPasswordForm({ ...passwordForm, confirmation: e.target.value })}
+                placeholder="Confirmer le mot de passe"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              />
+              <button
+                onClick={handleChangePassword}
+                disabled={saving}
+                className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg flex items-center gap-2"
+              >
+                {saving ? <RefreshCw size={18} className="animate-spin" /> : <Lock size={18} />}
+                Modifier le mot de passe
+              </button>
+            </div>
+          </div>
+
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-soft p-6">
+            <div className="flex items-center justify-between">
               <div>
-                <label className="label">Champs obligatoires</label>
-                <select className="input" multiple size={4}>
-                  <option>Nom</option>
-                  <option>Prénom</option>
-                  <option>Matricule</option>
-                  <option>Grade actuel</option>
-                  <option>Grade demandé</option>
-                  <option>Date prise de fonction</option>
+                <h3 className="font-medium text-gray-900 dark:text-white">Verrouillage automatique</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Verrouille la session après inactivité</p>
+              </div>
+              <button
+                onClick={handleAutoLockChange}
+                className={`w-12 h-6 rounded-full transition-colors ${
+                  settings.autoLock ? 'bg-green-600' : 'bg-gray-400'
+                }`}
+              >
+                <div className={`w-5 h-5 bg-white rounded-full shadow transform transition-transform ${
+                  settings.autoLock ? 'translate-x-6' : 'translate-x-1'
+                }`} />
+              </button>
+            </div>
+            {settings.autoLock && (
+              <div className="mt-4">
+                <label className="text-sm text-gray-600 dark:text-gray-400">Délai (minutes)</label>
+                <select
+                  value={settings.autoLockDelay}
+                  onChange={(e) => handleAutoLockDelayChange(parseInt(e.target.value))}
+                  className="ml-3 px-2 py-1 border rounded-lg"
+                >
+                  <option value={5}>5 minutes</option>
+                  <option value={10}>10 minutes</option>
+                  <option value={15}>15 minutes</option>
+                  <option value={30}>30 minutes</option>
                 </select>
               </div>
-            </div>
+            )}
+          </div>
+        </div>
+      )}
 
-            <div className="flex justify-end gap-2 mt-6">
-              <button onClick={() => setShowPopup(null)} className="btn-secondary">
-                Annuler
-              </button>
-              <button onClick={() => {
-                setShowPopup(null);
-                toast.success(editItem ? 'Type modifié' : 'Type ajouté');
-              }} className="btn-primary">
-                {editItem ? 'Modifier' : 'Ajouter'}
-              </button>
+      {/* ==================== ONGLET COMPTE ==================== */}
+      {activeTab === 'compte' && (
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-soft p-6">
+          <h3 className="font-medium text-gray-900 dark:text-white mb-4">Informations personnelles</h3>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nom</label>
+              <input
+                type="text"
+                value={user?.last_name || ''}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white"
+                disabled
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Prénom</label>
+              <input
+                type="text"
+                value={user?.first_name || ''}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white"
+                disabled
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email</label>
+              <input
+                type="email"
+                value={user?.email || ''}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white"
+                disabled
+              />
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">L'email ne peut pas être modifié</p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Rôle</label>
+              <input
+                type="text"
+                value={user?.role?.name || user?.role?.code || 'Utilisateur'}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white"
+                disabled
+              />
             </div>
           </div>
         </div>
       )}
 
-      {showPopup === 'service' && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl p-6 max-w-md w-full">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
-              {editItem ? 'Modifier' : 'Ajouter'} un service
-            </h3>
-            
-            <div className="space-y-4">
-              <div>
-                <label className="label">Nom du service</label>
-                <input type="text" className="input" defaultValue={editItem?.name} />
-              </div>
-              
-              <div>
-                <label className="label">Responsable</label>
-                <input type="text" className="input" defaultValue={editItem?.responsable} />
-              </div>
+      {/* Bouton reset */}
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-soft p-6">
+        <button
+          onClick={handleResetAll}
+          className="w-full py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors flex items-center justify-center gap-2"
+        >
+          <RefreshCw size={18} />
+          Réinitialiser tous les paramètres
+        </button>
+      </div>
 
-              <div>
-                <label className="label">Email</label>
-                <input type="email" className="input" defaultValue={editItem?.email} />
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-2 mt-6">
-              <button onClick={() => setShowPopup(null)} className="btn-secondary">
-                Annuler
-              </button>
-              <button onClick={() => {
-                setShowPopup(null);
-                toast.success(editItem ? 'Service modifié' : 'Service ajouté');
-              }} className="btn-primary">
-                {editItem ? 'Modifier' : 'Ajouter'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showPopup === 'role' && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl p-6 max-w-md w-full">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
-              {editItem ? 'Modifier' : 'Ajouter'} un rôle
-            </h3>
-            
-            <div className="space-y-4">
-              <div>
-                <label className="label">Nom du rôle</label>
-                <input type="text" className="input" defaultValue={editItem?.name} />
-              </div>
-              
-              <div>
-                <label className="label">Description</label>
-                <textarea className="input" rows={2} defaultValue={editItem?.description} />
-              </div>
-
-              <div>
-                <label className="label">Permissions</label>
-                <div className="space-y-2 max-h-48 overflow-y-auto p-2 bg-gray-50 rounded-lg">
-                  <label className="flex items-center gap-2">
-                    <input type="checkbox" className="w-4 h-4 text-marine-500 rounded" />
-                    <span>Voir tous les dossiers</span>
-                  </label>
-                  <label className="flex items-center gap-2">
-                    <input type="checkbox" className="w-4 h-4 text-marine-500 rounded" />
-                    <span>Créer des dossiers</span>
-                  </label>
-                  <label className="flex items-center gap-2">
-                    <input type="checkbox" className="w-4 h-4 text-marine-500 rounded" />
-                    <span>Valider étape DREN</span>
-                  </label>
-                  <label className="flex items-center gap-2">
-                    <input type="checkbox" className="w-4 h-4 text-marine-500 rounded" />
-                    <span>Valider étape MEN</span>
-                  </label>
-                  <label className="flex items-center gap-2">
-                    <input type="checkbox" className="w-4 h-4 text-marine-500 rounded" />
-                    <span>Valider étape FOP</span>
-                  </label>
-                  <label className="flex items-center gap-2">
-                    <input type="checkbox" className="w-4 h-4 text-marine-500 rounded" />
-                    <span>Valider étape Finance</span>
-                  </label>
-                  <label className="flex items-center gap-2">
-                    <input type="checkbox" className="w-4 h-4 text-marine-500 rounded" />
-                    <span>Gérer les utilisateurs</span>
-                  </label>
-                  <label className="flex items-center gap-2">
-                    <input type="checkbox" className="w-4 h-4 text-marine-500 rounded" />
-                    <span>Accéder aux paramètres</span>
-                  </label>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-2 mt-6">
-              <button onClick={() => setShowPopup(null)} className="btn-secondary">
-                Annuler
-              </button>
-              <button onClick={() => {
-                setShowPopup(null);
-                toast.success(editItem ? 'Rôle modifié' : 'Rôle ajouté');
-              }} className="btn-primary">
-                {editItem ? 'Modifier' : 'Ajouter'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Version */}
+      <div className="text-center text-sm text-gray-500 dark:text-gray-400 py-4">
+        Application version 1.0.0 © 2024 - Ministère de l'Éducation Nationale - Madagascar
+      </div>
     </div>
   );
 };

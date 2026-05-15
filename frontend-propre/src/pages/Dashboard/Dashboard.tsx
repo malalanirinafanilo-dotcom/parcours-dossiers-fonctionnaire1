@@ -1,4 +1,3 @@
-// src/pages/Dashboard/Dashboard.tsx
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
@@ -128,17 +127,14 @@ const Dashboard: React.FC = () => {
     try {
       console.log('🔄 Chargement des données du dashboard...');
       
-      // Récupérer les dossiers
       const dossiers = await dossierService.getDossiersForUser(userEmail, userRole);
       console.log('📥 Dossiers reçus:', dossiers.length);
       
-      // Trier par date et prendre les 5 plus récents
       const recents = [...dossiers]
         .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
         .slice(0, 5);
       setDossiersRecents(recents);
       
-      // Calculer les statistiques
       const enCours = dossiers.filter(d => 
         ['BROUILLON', 'EN_ATTENTE_DREN', 'EN_ATTENTE_MEN', 'EN_ATTENTE_FOP', 'EN_ATTENTE_FINANCE'].includes(d.statut)
       ).length;
@@ -154,14 +150,12 @@ const Dashboard: React.FC = () => {
       
       const bloques = dossiers.filter(d => d.statut === 'BLOQUE' || d.statut === 'REJETE').length;
       
-      // Compter par étape
       const parEtape: Record<string, number> = {};
       dossiers.forEach(d => {
         const etape = d.etape_actuelle || 'INCONNU';
         parEtape[etape] = (parEtape[etape] || 0) + 1;
       });
       
-      // Compter par type
       const parType: Record<string, number> = {};
       dossiers.forEach(d => {
         const type = d.type_dossier || 'AUTRE';
@@ -179,7 +173,6 @@ const Dashboard: React.FC = () => {
         evolutionHebdo: []
       });
       
-      // Mettre à jour les données des graphiques
       const nouvellesDonneesEtapes = donneesEtapes.map(item => ({
         ...item,
         count: parEtape[item.étape.toUpperCase()] || 0
@@ -209,7 +202,6 @@ const Dashboard: React.FC = () => {
     loadDashboardData();
   }, [userEmail, userRole]);
 
-  // ==================== GESTIONNAIRES ====================
   const refreshData = () => {
     loadDashboardData();
     toast.success('Données actualisées');
@@ -219,7 +211,6 @@ const Dashboard: React.FC = () => {
     navigate('/dossiers');
   };
 
-  // ==================== RENDU ====================
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -230,7 +221,7 @@ const Dashboard: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* ===== EN-TÊTE ===== */}
+      {/* En-tête */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Tableau de bord</h1>
@@ -259,7 +250,7 @@ const Dashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* ===== KPI CARDS ===== */}
+      {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <KpiCard
           title="Dossiers en cours"
@@ -291,9 +282,8 @@ const Dashboard: React.FC = () => {
         />
       </div>
 
-      {/* ===== GRAPHIQUES ===== */}
+      {/* Graphiques */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* GRAPHIQUE 1: Dossiers par étape */}
         <div className="lg:col-span-2">
           <div className="card">
             <div className="flex items-center justify-between mb-4">
@@ -304,38 +294,16 @@ const Dashboard: React.FC = () => {
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={donneesEtapes}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                  <XAxis 
-                    dataKey="étape" 
-                    tick={{ fontSize: 12, fill: '#6b7280' }}
-                    tickLine={false}
-                  />
-                  <YAxis 
-                    tick={{ fontSize: 12, fill: '#6b7280' }}
-                    tickLine={false}
-                    axisLine={false}
-                  />
-                  <Tooltip 
-                    contentStyle={{
-                      backgroundColor: '#fff',
-                      border: 'none',
-                      borderRadius: '8px',
-                      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-                    }}
-                  />
-                  <Bar 
-                    dataKey="count" 
-                    fill="#22c55e" 
-                    radius={[4, 4, 0, 0]}
-                    label={{ position: 'top', fill: '#6b7280', fontSize: 12 }}
-                  />
+                  <XAxis dataKey="étape" tick={{ fontSize: 12, fill: '#6b7280' }} tickLine={false} />
+                  <YAxis tick={{ fontSize: 12, fill: '#6b7280' }} tickLine={false} axisLine={false} />
+                  <Tooltip contentStyle={{ backgroundColor: '#fff', border: 'none', borderRadius: '8px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }} />
+                  <Bar dataKey="count" fill="#22c55e" radius={[4, 4, 0, 0]} label={{ position: 'top', fill: '#6b7280', fontSize: 12 }} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
           </div>
 
-          {/* Deux petits graphiques en dessous */}
           <div className="grid grid-cols-2 gap-6 mt-6">
-            {/* Graphique Délais */}
             <div className="card">
               <h3 className="font-medium text-gray-700 mb-3">Délais moyens (jours)</h3>
               <div className="space-y-3">
@@ -346,35 +314,19 @@ const Dashboard: React.FC = () => {
                       <span className="font-medium">{item.duree}j / {item.objectif}j</span>
                     </div>
                     <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
-                      <div
-                        className={`h-full rounded-full ${
-                          item.duree <= item.objectif ? 'bg-green-500' : 'bg-yellow-500'
-                        }`}
-                        style={{ width: `${Math.min(100, (item.duree / item.objectif) * 100)}%` }}
-                      />
+                      <div className={`h-full rounded-full ${item.duree <= item.objectif ? 'bg-green-500' : 'bg-yellow-500'}`} style={{ width: `${Math.min(100, (item.duree / item.objectif) * 100)}%` }} />
                     </div>
                   </div>
                 ))}
               </div>
             </div>
 
-            {/* Graphique Répartition par type */}
             <div className="card">
               <h3 className="font-medium text-gray-700 mb-3">Répartition par type</h3>
               <div className="h-48">
                 <ResponsiveContainer width="100%" height="100%">
                   <RePieChart>
-                    <Pie
-                      data={donneesTypes.filter(d => d.value > 0)}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={40}
-                      outerRadius={70}
-                      paddingAngle={2}
-                      dataKey="value"
-                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                      labelLine={false}
-                    >
+                    <Pie data={donneesTypes.filter(d => d.value > 0)} cx="50%" cy="50%" innerRadius={40} outerRadius={70} paddingAngle={2} dataKey="value" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={false}>
                       {donneesTypes.filter(d => d.value > 0).map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                       ))}
@@ -387,15 +339,12 @@ const Dashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* Colonne de droite - Alertes et statistiques rapides */}
         <div className="lg:col-span-1 space-y-6">
-          {/* Alertes IA */}
           <div className="card">
             <div className="flex items-center gap-2 mb-4">
               <Zap className="w-5 h-5 text-yellow-500" />
               <h2 className="text-lg font-semibold text-gray-900">Alertes</h2>
             </div>
-            
             <div className="space-y-3">
               {stats.enRetard > 0 && (
                 <div className="flex items-start gap-3 p-3 bg-yellow-50 rounded-lg">
@@ -406,7 +355,6 @@ const Dashboard: React.FC = () => {
                   </div>
                 </div>
               )}
-              
               {stats.bloques > 0 && (
                 <div className="flex items-start gap-3 p-3 bg-red-50 rounded-lg">
                   <AlertTriangle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
@@ -416,7 +364,6 @@ const Dashboard: React.FC = () => {
                   </div>
                 </div>
               )}
-              
               {stats.enRetard === 0 && stats.bloques === 0 && (
                 <div className="flex items-start gap-3 p-3 bg-green-50 rounded-lg">
                   <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
@@ -429,21 +376,15 @@ const Dashboard: React.FC = () => {
             </div>
           </div>
 
-          {/* Statistiques rapides */}
           <div className="card">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Statistiques</h2>
             <div className="space-y-3">
               <div className="flex justify-between items-center">
                 <span className="text-sm text-gray-600">Taux de complétion</span>
-                <span className="text-sm font-medium">
-                  {Math.round((stats.termines / (stats.total || 1)) * 100)}%
-                </span>
+                <span className="text-sm font-medium">{Math.round((stats.termines / (stats.total || 1)) * 100)}%</span>
               </div>
               <div className="w-full h-2 bg-gray-200 rounded-full">
-                <div
-                  className="h-full bg-green-500 rounded-full"
-                  style={{ width: `${(stats.termines / (stats.total || 1)) * 100}%` }}
-                />
+                <div className="h-full bg-green-500 rounded-full" style={{ width: `${(stats.termines / (stats.total || 1)) * 100}%` }} />
               </div>
               
               <div className="flex justify-between items-center mt-3">
@@ -458,38 +399,25 @@ const Dashboard: React.FC = () => {
             </div>
           </div>
 
-          {/* Derniers dossiers */}
           <div className="card">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-gray-900">Derniers dossiers</h2>
-              <button
-                onClick={handleVoirTous}
-                className="text-green-600 hover:text-green-700 text-sm font-medium flex items-center gap-1"
-              >
+              <button onClick={handleVoirTous} className="text-green-600 hover:text-green-700 text-sm font-medium flex items-center gap-1">
                 Voir tous
                 <ChevronRight size={16} />
               </button>
             </div>
-            
             <div className="space-y-3">
               {dossiersRecents.length > 0 ? (
                 dossiersRecents.map((dossier) => (
-                  <div
-                    key={dossier.id}
-                    onClick={() => navigate(`/dossiers/${dossier.id}`)}
-                    className="flex items-start gap-3 p-2 hover:bg-gray-50 rounded-lg cursor-pointer transition-colors"
-                  >
+                  <div key={dossier.id} onClick={() => navigate(`/dossiers/${dossier.id}`)} className="flex items-start gap-3 p-2 hover:bg-gray-50 rounded-lg cursor-pointer transition-colors">
                     <FileText className="w-4 h-4 text-green-500 flex-shrink-0 mt-1" />
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900 truncate">
-                        {dossier.numero_dossier}
-                      </p>
+                      <p className="text-sm font-medium text-gray-900 truncate">{dossier.numero_dossier}</p>
                       <p className="text-xs text-gray-500 truncate">{dossier.titre}</p>
                       <div className="flex items-center gap-2 mt-1">
                         <StatusChip status={dossier.statut} />
-                        <span className="text-xs text-gray-400">
-                          {new Date(dossier.created_at).toLocaleDateString('fr-FR')}
-                        </span>
+                        <span className="text-xs text-gray-400">{new Date(dossier.created_at).toLocaleDateString('fr-FR')}</span>
                       </div>
                     </div>
                   </div>
@@ -502,35 +430,11 @@ const Dashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* ===== SECTION ÉVOLUTION ===== */}
-      <div className="card">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-gray-900">Évolution hebdomadaire</h2>
-          <Activity className="w-5 h-5 text-gray-400" />
-        </div>
-        <div className="h-64">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={donneesEvolution}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-              <XAxis dataKey="jour" tick={{ fontSize: 12, fill: '#6b7280' }} />
-              <YAxis tick={{ fontSize: 12, fill: '#6b7280' }} />
-              <Tooltip />
-              <Legend />
-              <Line type="monotone" dataKey="crees" stroke="#22c55e" strokeWidth={2} dot={false} />
-              <Line type="monotone" dataKey="termines" stroke="#16a34a" strokeWidth={2} dot={false} />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
-
-      {/* ===== LISTE COMPLÈTE DES DOSSIERS RÉCENTS ===== */}
+      {/* Liste complète des dossiers récents */}
       <div className="card">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-gray-900">Dossiers récents</h2>
-          <button
-            onClick={handleVoirTous}
-            className="text-green-600 hover:text-green-700 text-sm font-medium flex items-center gap-1"
-          >
+          <button onClick={handleVoirTous} className="text-green-600 hover:text-green-700 text-sm font-medium flex items-center gap-1">
             Voir tous
             <Eye size={16} />
           </button>
@@ -551,35 +455,15 @@ const Dashboard: React.FC = () => {
             </thead>
             <tbody className="divide-y divide-gray-200">
               {dossiersRecents.map((dossier) => (
-                <tr
-                  key={dossier.id}
-                  onClick={() => navigate(`/dossiers/${dossier.id}`)}
-                  className="hover:bg-gray-50 cursor-pointer transition-colors"
-                >
-                  <td className="px-4 py-3 text-sm font-medium text-green-600">
-                    {dossier.numero_dossier}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray-900 max-w-xs truncate">
-                    {dossier.titre}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray-600">
-                    {dossier.fonctionnaire_nom} {dossier.fonctionnaire_prenom}
-                  </td>
+                <tr key={dossier.id} onClick={() => navigate(`/dossiers/${dossier.id}`)} className="hover:bg-gray-50 cursor-pointer transition-colors">
+                  <td className="px-4 py-3 text-sm font-medium text-green-600">{dossier.numero_dossier}</td>
+                  <td className="px-4 py-3 text-sm text-gray-900 max-w-xs truncate">{dossier.titre}</td>
+                  <td className="px-4 py-3 text-sm text-gray-600">{dossier.fonctionnaire_nom} {dossier.fonctionnaire_prenom}</td>
                   <td className="px-4 py-3 text-sm text-gray-600">{dossier.etape_actuelle}</td>
+                  <td className="px-4 py-3"><StatusChip status={dossier.statut} /></td>
+                  <td className="px-4 py-3 text-sm text-gray-600">{new Date(dossier.created_at).toLocaleDateString('fr-FR')}</td>
                   <td className="px-4 py-3">
-                    <StatusChip status={dossier.statut} />
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray-600">
-                    {new Date(dossier.created_at).toLocaleDateString('fr-FR')}
-                  </td>
-                  <td className="px-4 py-3">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        navigate(`/dossiers/${dossier.id}`);
-                      }}
-                      className="text-green-600 hover:text-green-700"
-                    >
+                    <button onClick={(e) => { e.stopPropagation(); navigate(`/dossiers/${dossier.id}`); }} className="text-green-600 hover:text-green-700">
                       <Eye size={16} />
                     </button>
                   </td>

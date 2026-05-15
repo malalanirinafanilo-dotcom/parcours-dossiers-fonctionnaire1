@@ -12,14 +12,15 @@ export interface CodeMouvementInfo {
     obligatoire?: boolean;
     readOnly?: boolean;
   }>;
-  documentsRequis: string[];
+  documentsObligatoires: string[];
+  documentsFacultatifs: string[];
   rolesApprobateurs: string[];
   delaiTraitement: number;
   indemnites?: string[];
 }
 
 export const CODES_MOUVEMENT_COMPLET: Record<string, CodeMouvementInfo> = {
-  // I - CAS DE CREATION (01-09)
+  // ==================== I - CREATION (01-09) ====================
   '01': {
     code: '01',
     libelle: 'Nomination Haut Emploi de l\'Etat (HEE) non fonctionnaire permanent',
@@ -33,9 +34,11 @@ export const CODES_MOUVEMENT_COMPLET: Record<string, CodeMouvementInfo> = {
       { nom: 'salaire_base', label: 'Salaire de base', type: 'number', obligatoire: true },
       { nom: 'indemnites', label: 'Indemnités', type: 'multiselect', options: ['542', '543'] }
     ],
-    documentsRequis: ['arrete_nomination.pdf', 'cv.pdf', 'diplomes.pdf', 'casier_judiciaire.pdf'],
+    documentsObligatoires: ['arrete_nomination.pdf', 'cv.pdf', 'diplomes.pdf', 'casier_judiciaire.pdf'],
+    documentsFacultatifs: ['lettre_motivation.pdf', 'certificat_travail.pdf'],
     rolesApprobateurs: ['DREN', 'MEN', 'FINANCE'],
-    delaiTraitement: 30
+    delaiTraitement: 30,
+    indemnites: ['542', '543']
   },
   '02': {
     code: '02',
@@ -52,7 +55,8 @@ export const CODES_MOUVEMENT_COMPLET: Record<string, CodeMouvementInfo> = {
       { nom: 'salaire_base', label: 'Salaire de base', type: 'number', obligatoire: true },
       { nom: 'indice', label: 'Indice', type: 'text' }
     ],
-    documentsRequis: ['demande_nomination.pdf', 'diplomes.pdf', 'casier_judiciaire.pdf', 'certificat_medical.pdf', 'photo_identite.jpg'],
+    documentsObligatoires: ['demande_nomination.pdf', 'diplomes.pdf', 'casier_judiciaire.pdf', 'certificat_medical.pdf', 'photo_identite.jpg'],
+    documentsFacultatifs: ['attestation_travail.pdf', 'cv.pdf', 'lettre_motivation.pdf'],
     rolesApprobateurs: ['DREN', 'MEN', 'FINANCE'],
     delaiTraitement: 45
   },
@@ -70,7 +74,8 @@ export const CODES_MOUVEMENT_COMPLET: Record<string, CodeMouvementInfo> = {
       { nom: 'date_debut_formation', label: 'Date début formation', type: 'date', obligatoire: true },
       { nom: 'duree_formation', label: 'Durée formation (mois)', type: 'number', obligatoire: true }
     ],
-    documentsRequis: ['demande_recrutement.pdf', 'diplomes.pdf', 'casier_judiciaire.pdf', 'certificat_medical.pdf', 'photo_identite.jpg', 'attestation_concours.pdf'],
+    documentsObligatoires: ['demande_recrutement.pdf', 'diplomes.pdf', 'casier_judiciaire.pdf', 'certificat_medical.pdf', 'photo_identite.jpg', 'attestation_concours.pdf'],
+    documentsFacultatifs: ['lettre_motivation.pdf', 'releve_notes.pdf'],
     rolesApprobateurs: ['DREN', 'MEN', 'FOP'],
     delaiTraitement: 30
   },
@@ -86,7 +91,8 @@ export const CODES_MOUVEMENT_COMPLET: Record<string, CodeMouvementInfo> = {
       { nom: 'option', label: 'Option choisie', type: 'text', obligatoire: true },
       { nom: 'etablissement', label: 'Établissement', type: 'text', obligatoire: true }
     ],
-    documentsRequis: ['demande_recrutement.pdf', 'diplomes.pdf', 'casier_judiciaire.pdf', 'certificat_medical.pdf', 'photo_identite.jpg'],
+    documentsObligatoires: ['demande_recrutement.pdf', 'diplomes.pdf', 'casier_judiciaire.pdf', 'certificat_medical.pdf', 'photo_identite.jpg'],
+    documentsFacultatifs: ['lettre_motivation.pdf', 'releve_notes.pdf'],
     rolesApprobateurs: ['DREN', 'MEN', 'FOP'],
     delaiTraitement: 30
   },
@@ -103,9 +109,11 @@ export const CODES_MOUVEMENT_COMPLET: Record<string, CodeMouvementInfo> = {
       { nom: 'grade_apres', label: 'Grade après nomination', type: 'text', obligatoire: true },
       { nom: 'indemnites', label: 'Indemnités', type: 'multiselect', options: ['542'] }
     ],
-    documentsRequis: ['arrete_nomination.pdf', 'cv.pdf', 'diplomes.pdf'],
+    documentsObligatoires: ['arrete_nomination.pdf', 'cv.pdf', 'diplomes.pdf'],
+    documentsFacultatifs: ['lettre_motivation.pdf'],
     rolesApprobateurs: ['MEN', 'FINANCE'],
-    delaiTraitement: 20
+    delaiTraitement: 20,
+    indemnites: ['542']
   },
   '06': {
     code: '06',
@@ -119,9 +127,11 @@ export const CODES_MOUVEMENT_COMPLET: Record<string, CodeMouvementInfo> = {
       { nom: 'duree_mission', label: 'Durée de la mission (mois)', type: 'number', obligatoire: true },
       { nom: 'indemnites', label: 'Indemnités', type: 'multiselect', options: ['542', '543'] }
     ],
-    documentsRequis: ['arrete_nomination.pdf', 'cv.pdf', 'diplomes.pdf'],
+    documentsObligatoires: ['arrete_nomination.pdf', 'cv.pdf', 'diplomes.pdf'],
+    documentsFacultatifs: ['lettre_motivation.pdf'],
     rolesApprobateurs: ['MEN', 'FINANCE'],
-    delaiTraitement: 20
+    delaiTraitement: 20,
+    indemnites: ['542', '543']
   },
   '07': {
     code: '07',
@@ -136,9 +146,11 @@ export const CODES_MOUVEMENT_COMPLET: Record<string, CodeMouvementInfo> = {
       { nom: 'salaire_base', label: 'Salaire de base', type: 'number', obligatoire: true },
       { nom: 'indemnites', label: 'Indemnités', type: 'multiselect', options: ['542', '543'] }
     ],
-    documentsRequis: ['arrete_nomination.pdf', 'cv.pdf', 'diplomes.pdf', 'contrat.pdf'],
+    documentsObligatoires: ['arrete_nomination.pdf', 'cv.pdf', 'diplomes.pdf', 'contrat.pdf'],
+    documentsFacultatifs: ['lettre_motivation.pdf'],
     rolesApprobateurs: ['MEN', 'FINANCE'],
-    delaiTraitement: 20
+    delaiTraitement: 20,
+    indemnites: ['542', '543']
   },
   '08': {
     code: '08',
@@ -153,7 +165,8 @@ export const CODES_MOUVEMENT_COMPLET: Record<string, CodeMouvementInfo> = {
       { nom: 'duree_sejour', label: 'Durée du séjour (mois)', type: 'number', obligatoire: true },
       { nom: 'motif_retour', label: 'Motif du retour', type: 'textarea', obligatoire: true }
     ],
-    documentsRequis: ['demande_rapatriement.pdf', 'attestation_service_exterieur.pdf', 'rapport_activite.pdf'],
+    documentsObligatoires: ['demande_rapatriement.pdf', 'attestation_service_exterieur.pdf', 'rapport_activite.pdf'],
+    documentsFacultatifs: ['justificatifs_frais.pdf'],
     rolesApprobateurs: ['DREN', 'MEN', 'FINANCE'],
     delaiTraitement: 60
   },
@@ -168,12 +181,13 @@ export const CODES_MOUVEMENT_COMPLET: Record<string, CodeMouvementInfo> = {
       { nom: 'date_effet', label: "Date d'effet", type: 'date', obligatoire: true },
       { nom: 'motif', label: 'Motif', type: 'textarea', obligatoire: true }
     ],
-    documentsRequis: ['demande_nomination.pdf', 'pieces_justificatives.pdf'],
+    documentsObligatoires: ['demande_nomination.pdf', 'pieces_justificatives.pdf'],
+    documentsFacultatifs: [],
     rolesApprobateurs: ['DREN', 'MEN'],
     delaiTraitement: 30
   },
 
-  // II - CAS DE MODIFICATION DE SITUATION (10-19)
+  // ==================== II - MODIFICATION (10-19) ====================
   '10': {
     code: '10',
     libelle: 'Intégration',
@@ -187,7 +201,8 @@ export const CODES_MOUVEMENT_COMPLET: Record<string, CodeMouvementInfo> = {
       { nom: 'date_effet', label: "Date d'effet", type: 'date', obligatoire: true },
       { nom: 'anciennete', label: 'Ancienneté dans le grade (ans)', type: 'number', obligatoire: true }
     ],
-    documentsRequis: ['demande_integration.pdf', 'diplomes.pdf', 'attestation_service.pdf'],
+    documentsObligatoires: ['demande_integration.pdf', 'diplomes.pdf', 'attestation_service.pdf'],
+    documentsFacultatifs: ['dernier_arrete.pdf', 'cv.pdf'],
     rolesApprobateurs: ['DREN', 'MEN'],
     delaiTraitement: 30
   },
@@ -204,7 +219,8 @@ export const CODES_MOUVEMENT_COMPLET: Record<string, CodeMouvementInfo> = {
       { nom: 'date_titularisation', label: 'Date de titularisation', type: 'date', obligatoire: true },
       { nom: 'grade', label: 'Grade', type: 'text', obligatoire: true }
     ],
-    documentsRequis: ['rapport_stage.pdf', 'evaluation.pdf', 'demande_titularisation.pdf'],
+    documentsObligatoires: ['rapport_stage.pdf', 'evaluation.pdf', 'demande_titularisation.pdf'],
+    documentsFacultatifs: ['attestation_fin_stage.pdf'],
     rolesApprobateurs: ['DREN', 'MEN'],
     delaiTraitement: 20
   },
@@ -220,7 +236,8 @@ export const CODES_MOUVEMENT_COMPLET: Record<string, CodeMouvementInfo> = {
       { nom: 'motif', label: 'Motif', type: 'textarea', obligatoire: true },
       { nom: 'note', label: 'Note /20', type: 'number', obligatoire: true }
     ],
-    documentsRequis: ['avenant.pdf', 'evaluation.pdf', 'ancien_arrete.pdf'],
+    documentsObligatoires: ['avenant.pdf', 'evaluation.pdf', 'ancien_arrete.pdf'],
+    documentsFacultatifs: ['demande_avancement.pdf'],
     rolesApprobateurs: ['DREN', 'MEN', 'FINANCE'],
     delaiTraitement: 15
   },
@@ -235,7 +252,8 @@ export const CODES_MOUVEMENT_COMPLET: Record<string, CodeMouvementInfo> = {
       { nom: 'date_effet', label: "Date d'effet", type: 'date', obligatoire: true },
       { nom: 'anciennete', label: 'Ancienneté dans l\'échelon (ans)', type: 'number', obligatoire: true }
     ],
-    documentsRequis: ['arrete_avancement.pdf', 'evaluation.pdf'],
+    documentsObligatoires: ['arrete_avancement.pdf', 'evaluation.pdf'],
+    documentsFacultatifs: [],
     rolesApprobateurs: ['DREN', 'MEN'],
     delaiTraitement: 10
   },
@@ -252,7 +270,8 @@ export const CODES_MOUVEMENT_COMPLET: Record<string, CodeMouvementInfo> = {
       { nom: 'nouvel_indice', label: 'Nouvel indice', type: 'number', obligatoire: true },
       { nom: 'date_effet', label: "Date d'effet", type: 'date', obligatoire: true }
     ],
-    documentsRequis: ['arrete_reclassement.pdf', 'diplomes.pdf', 'ancien_arrete.pdf'],
+    documentsObligatoires: ['arrete_reclassement.pdf', 'diplomes.pdf', 'ancien_arrete.pdf'],
+    documentsFacultatifs: ['demande_reclassement.pdf'],
     rolesApprobateurs: ['MEN', 'FINANCE'],
     delaiTraitement: 25
   },
@@ -267,7 +286,8 @@ export const CODES_MOUVEMENT_COMPLET: Record<string, CodeMouvementInfo> = {
       { nom: 'nouvelle_option', label: 'Nouvelle option', type: 'text', obligatoire: true },
       { nom: 'date_effet', label: "Date d'effet", type: 'date', obligatoire: true }
     ],
-    documentsRequis: ['avenant.pdf', 'diplomes.pdf', 'certificat_scolarite.pdf'],
+    documentsObligatoires: ['avenant.pdf', 'diplomes.pdf', 'certificat_scolarite.pdf'],
+    documentsFacultatifs: [],
     rolesApprobateurs: ['DREN', 'MEN', 'FOP'],
     delaiTraitement: 20
   },
@@ -283,7 +303,8 @@ export const CODES_MOUVEMENT_COMPLET: Record<string, CodeMouvementInfo> = {
       { nom: 'date_effet', label: "Date d'effet", type: 'date', obligatoire: true },
       { nom: 'indice', label: 'Indice', type: 'number', obligatoire: true }
     ],
-    documentsRequis: ['demande_majoration.pdf', 'justificatif_anciennete.pdf'],
+    documentsObligatoires: ['demande_majoration.pdf', 'justificatif_anciennete.pdf'],
+    documentsFacultatifs: [],
     rolesApprobateurs: ['DREN', 'FINANCE'],
     delaiTraitement: 15
   },
@@ -299,7 +320,8 @@ export const CODES_MOUVEMENT_COMPLET: Record<string, CodeMouvementInfo> = {
       { nom: 'motif', label: 'Motif', type: 'textarea', obligatoire: true },
       { nom: 'evaluation', label: 'Évaluation', type: 'select', options: ['Positive', 'Moyenne', 'Négative'], obligatoire: true }
     ],
-    documentsRequis: ['contrat_actuel.pdf', 'demande_renouvellement.pdf', 'evaluation.pdf'],
+    documentsObligatoires: ['contrat_actuel.pdf', 'demande_renouvellement.pdf', 'evaluation.pdf'],
+    documentsFacultatifs: [],
     rolesApprobateurs: ['DREN', 'MEN'],
     delaiTraitement: 15
   },
@@ -315,7 +337,8 @@ export const CODES_MOUVEMENT_COMPLET: Record<string, CodeMouvementInfo> = {
       { nom: 'motif', label: 'Motif', type: 'textarea', obligatoire: true },
       { nom: 'date_effet', label: "Date d'effet", type: 'date', obligatoire: true }
     ],
-    documentsRequis: ['demande_bonification.pdf', 'justificatifs_services.pdf'],
+    documentsObligatoires: ['demande_bonification.pdf', 'justificatifs_services.pdf'],
+    documentsFacultatifs: [],
     rolesApprobateurs: ['DREN', 'MEN', 'FINANCE'],
     delaiTraitement: 20
   },
@@ -331,13 +354,14 @@ export const CODES_MOUVEMENT_COMPLET: Record<string, CodeMouvementInfo> = {
       { nom: 'periode', label: 'Période concernée', type: 'text', obligatoire: true },
       { nom: 'motif', label: 'Motif', type: 'textarea' }
     ],
-    documentsRequis: ['demande_indemnite.pdf', 'releve_conges.pdf'],
+    documentsObligatoires: ['demande_indemnite.pdf', 'releve_conges.pdf'],
+    documentsFacultatifs: [],
     rolesApprobateurs: ['DREN', 'FINANCE'],
     delaiTraitement: 15,
     indemnites: ['542']
   },
 
-  // III - POSITIONS DIVERSES (20-29)
+  // ==================== III - POSITION (20-29) ====================
   '20': {
     code: '20',
     libelle: 'Affectation',
@@ -350,7 +374,8 @@ export const CODES_MOUVEMENT_COMPLET: Record<string, CodeMouvementInfo> = {
       { nom: 'date_souhaitee', label: 'Date souhaitée', type: 'date', obligatoire: true },
       { nom: 'poste', label: 'Poste', type: 'text', obligatoire: true }
     ],
-    documentsRequis: ['demande_affectation.pdf', 'accord_etablissement.pdf'],
+    documentsObligatoires: ['demande_affectation.pdf', 'accord_etablissement.pdf'],
+    documentsFacultatifs: ['lettre_motivation.pdf'],
     rolesApprobateurs: ['DREN', 'MEN'],
     delaiTraitement: 20
   },
@@ -367,7 +392,8 @@ export const CODES_MOUVEMENT_COMPLET: Record<string, CodeMouvementInfo> = {
       { nom: 'duree', label: 'Durée (mois)', type: 'number', obligatoire: true },
       { nom: 'motif', label: 'Motif', type: 'textarea', obligatoire: true }
     ],
-    documentsRequis: ['demande_detachement.pdf', 'accord_administration.pdf'],
+    documentsObligatoires: ['demande_detachement.pdf', 'accord_administration.pdf'],
+    documentsFacultatifs: [],
     rolesApprobateurs: ['DREN', 'MEN', 'FINANCE'],
     delaiTraitement: 30
   },
@@ -383,7 +409,8 @@ export const CODES_MOUVEMENT_COMPLET: Record<string, CodeMouvementInfo> = {
       { nom: 'motif', label: 'Motif', type: 'textarea', obligatoire: true },
       { nom: 'type_disponibilite', label: 'Type', type: 'select', options: ['Personnelle', 'Familiale', 'Études', 'Autre'], obligatoire: true }
     ],
-    documentsRequis: ['demande_disponibilite.pdf', 'motif.pdf'],
+    documentsObligatoires: ['demande_disponibilite.pdf', 'motif.pdf'],
+    documentsFacultatifs: [],
     rolesApprobateurs: ['DREN', 'MEN'],
     delaiTraitement: 15
   },
@@ -399,7 +426,8 @@ export const CODES_MOUVEMENT_COMPLET: Record<string, CodeMouvementInfo> = {
       { nom: 'unite', label: 'Unité militaire', type: 'text', obligatoire: true },
       { nom: 'grade_militaire', label: 'Grade militaire', type: 'text' }
     ],
-    documentsRequis: ['ordre_appel.pdf', 'certificat_militaire.pdf'],
+    documentsObligatoires: ['ordre_appel.pdf', 'certificat_militaire.pdf'],
+    documentsFacultatifs: [],
     rolesApprobateurs: ['DREN'],
     delaiTraitement: 10
   },
@@ -415,7 +443,8 @@ export const CODES_MOUVEMENT_COMPLET: Record<string, CodeMouvementInfo> = {
       { nom: 'poste_fop', label: 'Poste à la FOP', type: 'text', obligatoire: true },
       { nom: 'motif', label: 'Motif', type: 'textarea', obligatoire: true }
     ],
-    documentsRequis: ['demande_mise_disposition.pdf', 'accord_fop.pdf'],
+    documentsObligatoires: ['demande_mise_disposition.pdf', 'accord_fop.pdf'],
+    documentsFacultatifs: [],
     rolesApprobateurs: ['DREN', 'MEN', 'FOP'],
     delaiTraitement: 20
   },
@@ -431,7 +460,8 @@ export const CODES_MOUVEMENT_COMPLET: Record<string, CodeMouvementInfo> = {
       { nom: 'solution_proposee', label: 'Solution proposée', type: 'textarea', obligatoire: true },
       { nom: 'statut_demande', label: 'Statut demandé', type: 'text', obligatoire: true }
     ],
-    documentsRequis: ['rapport_situation.pdf', 'justificatifs.pdf'],
+    documentsObligatoires: ['rapport_situation.pdf', 'justificatifs.pdf'],
+    documentsFacultatifs: [],
     rolesApprobateurs: ['DREN', 'MEN', 'FINANCE'],
     delaiTraitement: 30
   },
@@ -447,7 +477,8 @@ export const CODES_MOUVEMENT_COMPLET: Record<string, CodeMouvementInfo> = {
       { nom: 'poste_origine', label: 'Poste d\'origine', type: 'text', obligatoire: true },
       { nom: 'poste_reintegration', label: 'Poste de réintégration', type: 'text', obligatoire: true }
     ],
-    documentsRequis: ['demande_reintegration.pdf', 'certificat_fin_service.pdf'],
+    documentsObligatoires: ['demande_reintegration.pdf', 'certificat_fin_service.pdf'],
+    documentsFacultatifs: [],
     rolesApprobateurs: ['DREN', 'MEN'],
     delaiTraitement: 15
   },
@@ -463,7 +494,8 @@ export const CODES_MOUVEMENT_COMPLET: Record<string, CodeMouvementInfo> = {
       { nom: 'poste_origine', label: 'Poste d\'origine', type: 'text', obligatoire: true },
       { nom: 'poste_reintegration', label: 'Poste de réintégration', type: 'text', obligatoire: true }
     ],
-    documentsRequis: ['demande_reintegration.pdf', 'fin_disponibilite.pdf'],
+    documentsObligatoires: ['demande_reintegration.pdf', 'fin_disponibilite.pdf'],
+    documentsFacultatifs: [],
     rolesApprobateurs: ['DREN', 'MEN'],
     delaiTraitement: 15
   },
@@ -479,7 +511,8 @@ export const CODES_MOUVEMENT_COMPLET: Record<string, CodeMouvementInfo> = {
       { nom: 'motif', label: 'Motif', type: 'textarea', obligatoire: true },
       { nom: 'poste_reintegration', label: 'Poste de réintégration', type: 'text', obligatoire: true }
     ],
-    documentsRequis: ['decision_reintegration.pdf', 'rapport_enquete.pdf'],
+    documentsObligatoires: ['decision_reintegration.pdf', 'rapport_enquete.pdf'],
+    documentsFacultatifs: [],
     rolesApprobateurs: ['DREN', 'MEN', 'FINANCE'],
     delaiTraitement: 20
   },
@@ -495,12 +528,13 @@ export const CODES_MOUVEMENT_COMPLET: Record<string, CodeMouvementInfo> = {
       { nom: 'motif', label: 'Motif', type: 'textarea', obligatoire: true },
       { nom: 'avis_medical', label: 'Avis médical', type: 'select', options: ['Favorable', 'Défavorable'], obligatoire: true }
     ],
-    documentsRequis: ['demande_maintien.pdf', 'avis_medical.pdf'],
+    documentsObligatoires: ['demande_maintien.pdf', 'avis_medical.pdf'],
+    documentsFacultatifs: [],
     rolesApprobateurs: ['MEN', 'FINANCE'],
     delaiTraitement: 25
   },
 
-  // IV - SANCTIONS (30-39)
+  // ==================== IV - SANCTION (30-39) ====================
   '30': {
     code: '30',
     libelle: 'Suspension de Solde',
@@ -513,7 +547,8 @@ export const CODES_MOUVEMENT_COMPLET: Record<string, CodeMouvementInfo> = {
       { nom: 'motif', label: 'Motif', type: 'textarea', obligatoire: true },
       { nom: 'reference_decision', label: 'Référence décision', type: 'text', obligatoire: true }
     ],
-    documentsRequis: ['decision_suspension.pdf', 'rapport_disciplinaire.pdf'],
+    documentsObligatoires: ['decision_suspension.pdf', 'rapport_disciplinaire.pdf'],
+    documentsFacultatifs: [],
     rolesApprobateurs: ['DREN', 'MEN', 'FINANCE'],
     delaiTraitement: 10
   },
@@ -529,7 +564,8 @@ export const CODES_MOUVEMENT_COMPLET: Record<string, CodeMouvementInfo> = {
       { nom: 'motif', label: 'Motif', type: 'textarea', obligatoire: true },
       { nom: 'reference_decision', label: 'Référence décision', type: 'text', obligatoire: true }
     ],
-    documentsRequis: ['decision_suspension.pdf', 'rapport_disciplinaire.pdf'],
+    documentsObligatoires: ['decision_suspension.pdf', 'rapport_disciplinaire.pdf'],
+    documentsFacultatifs: [],
     rolesApprobateurs: ['DREN', 'MEN'],
     delaiTraitement: 10
   },
@@ -544,7 +580,8 @@ export const CODES_MOUVEMENT_COMPLET: Record<string, CodeMouvementInfo> = {
       { nom: 'reference_decision', label: 'Référence décision', type: 'text', obligatoire: true },
       { nom: 'duree_service', label: 'Durée de service (ans)', type: 'number', obligatoire: true }
     ],
-    documentsRequis: ['arrete_revocation.pdf', 'rapport_final.pdf'],
+    documentsObligatoires: ['arrete_revocation.pdf', 'rapport_final.pdf'],
+    documentsFacultatifs: [],
     rolesApprobateurs: ['MEN', 'FINANCE'],
     delaiTraitement: 30
   },
@@ -558,7 +595,8 @@ export const CODES_MOUVEMENT_COMPLET: Record<string, CodeMouvementInfo> = {
       { nom: 'motif', label: 'Motif', type: 'textarea', obligatoire: true },
       { nom: 'reference_decision', label: 'Référence décision', type: 'text', obligatoire: true }
     ],
-    documentsRequis: ['arrete_revocation.pdf', 'rapport_final.pdf'],
+    documentsObligatoires: ['arrete_revocation.pdf', 'rapport_final.pdf'],
+    documentsFacultatifs: [],
     rolesApprobateurs: ['MEN', 'FINANCE'],
     delaiTraitement: 30
   },
@@ -573,7 +611,8 @@ export const CODES_MOUVEMENT_COMPLET: Record<string, CodeMouvementInfo> = {
       { nom: 'reference_contrat', label: 'Référence contrat', type: 'text', obligatoire: true },
       { nom: 'preavis', label: 'Préavis (jours)', type: 'number', obligatoire: true }
     ],
-    documentsRequis: ['decision_resiliation.pdf', 'motif_resiliation.pdf'],
+    documentsObligatoires: ['decision_resiliation.pdf', 'motif_resiliation.pdf'],
+    documentsFacultatifs: [],
     rolesApprobateurs: ['DREN', 'MEN'],
     delaiTraitement: 15
   },
@@ -589,7 +628,8 @@ export const CODES_MOUVEMENT_COMPLET: Record<string, CodeMouvementInfo> = {
       { nom: 'motif', label: 'Motif', type: 'textarea', obligatoire: true },
       { nom: 'date_effet', label: "Date d'effet", type: 'date', obligatoire: true }
     ],
-    documentsRequis: ['decision_reduction.pdf', 'rapport_disciplinaire.pdf'],
+    documentsObligatoires: ['decision_reduction.pdf', 'rapport_disciplinaire.pdf'],
+    documentsFacultatifs: [],
     rolesApprobateurs: ['DREN', 'MEN'],
     delaiTraitement: 15
   },
@@ -604,7 +644,8 @@ export const CODES_MOUVEMENT_COMPLET: Record<string, CodeMouvementInfo> = {
       { nom: 'motif', label: 'Motif', type: 'textarea', obligatoire: true },
       { nom: 'date_effet', label: "Date d'effet", type: 'date', obligatoire: true }
     ],
-    documentsRequis: ['decision_abaissement.pdf', 'rapport_disciplinaire.pdf'],
+    documentsObligatoires: ['decision_abaissement.pdf', 'rapport_disciplinaire.pdf'],
+    documentsFacultatifs: [],
     rolesApprobateurs: ['DREN', 'MEN'],
     delaiTraitement: 15
   },
@@ -619,7 +660,8 @@ export const CODES_MOUVEMENT_COMPLET: Record<string, CodeMouvementInfo> = {
       { nom: 'motif', label: 'Motif', type: 'textarea', obligatoire: true },
       { nom: 'date_effet', label: "Date d'effet", type: 'date', obligatoire: true }
     ],
-    documentsRequis: ['decision_retrogradation.pdf', 'rapport_disciplinaire.pdf'],
+    documentsObligatoires: ['decision_retrogradation.pdf', 'rapport_disciplinaire.pdf'],
+    documentsFacultatifs: [],
     rolesApprobateurs: ['DREN', 'MEN'],
     delaiTraitement: 20
   },
@@ -635,7 +677,8 @@ export const CODES_MOUVEMENT_COMPLET: Record<string, CodeMouvementInfo> = {
       { nom: 'duree', label: 'Durée (mois)', type: 'number', obligatoire: true },
       { nom: 'motif', label: 'Motif', type: 'textarea', obligatoire: true }
     ],
-    documentsRequis: ['decision_redoublement.pdf', 'rapport_stage.pdf'],
+    documentsObligatoires: ['decision_redoublement.pdf', 'rapport_stage.pdf'],
+    documentsFacultatifs: [],
     rolesApprobateurs: ['DREN', 'FOP'],
     delaiTraitement: 10
   },
@@ -651,12 +694,13 @@ export const CODES_MOUVEMENT_COMPLET: Record<string, CodeMouvementInfo> = {
       { nom: 'date_fin', label: 'Date fin', type: 'date', obligatoire: true },
       { nom: 'motif', label: 'Motif', type: 'textarea', obligatoire: true }
     ],
-    documentsRequis: ['decision_redoublement.pdf', 'rapport_evaluation.pdf'],
+    documentsObligatoires: ['decision_redoublement.pdf', 'rapport_evaluation.pdf'],
+    documentsFacultatifs: [],
     rolesApprobateurs: ['DREN', 'MEN'],
     delaiTraitement: 10
   },
 
-  // V - ANNULATION (40-49)
+  // ==================== V - ANNULATION (40-49) ====================
   '40': {
     code: '40',
     libelle: 'Décès',
@@ -667,7 +711,8 @@ export const CODES_MOUVEMENT_COMPLET: Record<string, CodeMouvementInfo> = {
       { nom: 'lieu_deces', label: 'Lieu du décès', type: 'text', obligatoire: true },
       { nom: 'numero_acte', label: 'N° acte de décès', type: 'text', obligatoire: true }
     ],
-    documentsRequis: ['acte_deces.pdf', 'certificat_deces.pdf'],
+    documentsObligatoires: ['acte_deces.pdf', 'certificat_deces.pdf'],
+    documentsFacultatifs: [],
     rolesApprobateurs: ['DREN', 'MEN', 'FINANCE'],
     delaiTraitement: 5
   },
@@ -682,7 +727,8 @@ export const CODES_MOUVEMENT_COMPLET: Record<string, CodeMouvementInfo> = {
       { nom: 'preavis', label: 'Préavis effectué (jours)', type: 'number', obligatoire: true },
       { nom: 'date_effet', label: "Date d'effet", type: 'date', obligatoire: true }
     ],
-    documentsRequis: ['lettre_demission.pdf', 'accusé_reception.pdf'],
+    documentsObligatoires: ['lettre_demission.pdf', 'accuse_reception.pdf'],
+    documentsFacultatifs: [],
     rolesApprobateurs: ['DREN', 'MEN'],
     delaiTraitement: 15
   },
@@ -698,7 +744,8 @@ export const CODES_MOUVEMENT_COMPLET: Record<string, CodeMouvementInfo> = {
       { nom: 'duree_service', label: 'Durée de service (ans)', type: 'number', obligatoire: true },
       { nom: 'dernier_grade', label: 'Dernier grade', type: 'text', obligatoire: true }
     ],
-    documentsRequis: ['demande_retraite.pdf', 'acte_naissance.pdf', 'releve_carriere.pdf'],
+    documentsObligatoires: ['demande_retraite.pdf', 'acte_naissance.pdf', 'releve_carriere.pdf'],
+    documentsFacultatifs: [],
     rolesApprobateurs: ['DREN', 'MEN', 'FINANCE'],
     delaiTraitement: 30
   },
@@ -714,7 +761,8 @@ export const CODES_MOUVEMENT_COMPLET: Record<string, CodeMouvementInfo> = {
       { nom: 'date_depart', label: 'Date de départ', type: 'date', obligatoire: true },
       { nom: 'dernier_salaire', label: 'Dernier salaire', type: 'number', obligatoire: true }
     ],
-    documentsRequis: ['demande_retraite.pdf', 'releve_carriere.pdf'],
+    documentsObligatoires: ['demande_retraite.pdf', 'releve_carriere.pdf'],
+    documentsFacultatifs: [],
     rolesApprobateurs: ['DREN', 'MEN', 'FINANCE'],
     delaiTraitement: 30
   },
@@ -729,7 +777,8 @@ export const CODES_MOUVEMENT_COMPLET: Record<string, CodeMouvementInfo> = {
       { nom: 'motif', label: 'Motif', type: 'textarea', obligatoire: true },
       { nom: 'reference_arrete', label: 'Référence arrêté', type: 'text', obligatoire: true }
     ],
-    documentsRequis: ['arrete_retraite.pdf', 'notification.pdf'],
+    documentsObligatoires: ['arrete_retraite.pdf', 'notification.pdf'],
+    documentsFacultatifs: [],
     rolesApprobateurs: ['MEN', 'FINANCE'],
     delaiTraitement: 15
   },
@@ -746,7 +795,8 @@ export const CODES_MOUVEMENT_COMPLET: Record<string, CodeMouvementInfo> = {
       { nom: 'duree', label: 'Durée (mois)', type: 'number', obligatoire: true },
       { nom: 'motif', label: 'Motif', type: 'textarea', obligatoire: true }
     ],
-    documentsRequis: ['demande_hors_cadre.pdf', 'accord_administration.pdf'],
+    documentsObligatoires: ['demande_hors_cadre.pdf', 'accord_administration.pdf'],
+    documentsFacultatifs: [],
     rolesApprobateurs: ['DREN', 'MEN'],
     delaiTraitement: 20
   },
@@ -761,7 +811,8 @@ export const CODES_MOUVEMENT_COMPLET: Record<string, CodeMouvementInfo> = {
       { nom: 'motif', label: 'Motif', type: 'textarea', obligatoire: true },
       { nom: 'reference_decision', label: 'Référence décision', type: 'text', obligatoire: true }
     ],
-    documentsRequis: ['decision_abrogation.pdf', 'notification.pdf'],
+    documentsObligatoires: ['decision_abrogation.pdf', 'notification.pdf'],
+    documentsFacultatifs: [],
     rolesApprobateurs: ['MEN', 'FINANCE'],
     delaiTraitement: 15
   },
@@ -777,7 +828,8 @@ export const CODES_MOUVEMENT_COMPLET: Record<string, CodeMouvementInfo> = {
       { nom: 'reference_juridique', label: 'Référence juridique', type: 'text', obligatoire: true },
       { nom: 'beneficiaire', label: 'Bénéficiaire', type: 'text', obligatoire: true }
     ],
-    documentsRequis: ['decision_opposition.pdf', 'document_juridique.pdf'],
+    documentsObligatoires: ['decision_opposition.pdf', 'document_juridique.pdf'],
+    documentsFacultatifs: [],
     rolesApprobateurs: ['FINANCE'],
     delaiTraitement: 5
   },
@@ -792,7 +844,8 @@ export const CODES_MOUVEMENT_COMPLET: Record<string, CodeMouvementInfo> = {
       { nom: 'motif_annulation', label: "Motif d'annulation", type: 'textarea', obligatoire: true },
       { nom: 'date_effet', label: "Date d'effet", type: 'date', obligatoire: true }
     ],
-    documentsRequis: ['demande_annulation.pdf', 'justificatif.pdf'],
+    documentsObligatoires: ['demande_annulation.pdf', 'justificatif.pdf'],
+    documentsFacultatifs: [],
     rolesApprobateurs: ['FINANCE'],
     delaiTraitement: 10
   },
@@ -808,12 +861,13 @@ export const CODES_MOUVEMENT_COMPLET: Record<string, CodeMouvementInfo> = {
       { nom: 'motif', label: 'Motif', type: 'textarea', obligatoire: true },
       { nom: 'reaffectation', label: 'Réaffectation', type: 'text' }
     ],
-    documentsRequis: ['decision_abrogation.pdf', 'notification.pdf'],
+    documentsObligatoires: ['decision_abrogation.pdf', 'notification.pdf'],
+    documentsFacultatifs: [],
     rolesApprobateurs: ['MEN', 'FINANCE'],
     delaiTraitement: 15
   },
 
-  // VI - REGULARISATION MODIFICATION DE SITUATION (60-76)
+  // ==================== VI - REGULARISATION (60-76) ====================
   '60': {
     code: '60',
     libelle: 'Allocations familiales',
@@ -825,7 +879,8 @@ export const CODES_MOUVEMENT_COMPLET: Record<string, CodeMouvementInfo> = {
       { nom: 'date_debut', label: 'Date de début', type: 'date', obligatoire: true },
       { nom: 'conjoint_travaille', label: 'Conjoint travaille', type: 'checkbox' }
     ],
-    documentsRequis: ['demande_allocations.pdf', 'actes_naissance_enfants.pdf'],
+    documentsObligatoires: ['demande_allocations.pdf', 'actes_naissance_enfants.pdf'],
+    documentsFacultatifs: ['certificat_scolarite.pdf'],
     rolesApprobateurs: ['DREN', 'FINANCE'],
     delaiTraitement: 15
   },
@@ -840,7 +895,8 @@ export const CODES_MOUVEMENT_COMPLET: Record<string, CodeMouvementInfo> = {
       { nom: 'periode', label: 'Période', type: 'text', obligatoire: true },
       { nom: 'motif', label: 'Motif', type: 'textarea', obligatoire: true }
     ],
-    documentsRequis: ['demande_indemnites.pdf', 'justificatifs.pdf'],
+    documentsObligatoires: ['demande_indemnites.pdf', 'justificatifs.pdf'],
+    documentsFacultatifs: [],
     rolesApprobateurs: ['DREN', 'FINANCE'],
     delaiTraitement: 15,
     indemnites: ['542', '543']
@@ -857,7 +913,8 @@ export const CODES_MOUVEMENT_COMPLET: Record<string, CodeMouvementInfo> = {
       { nom: 'date_fin', label: 'Date de fin', type: 'date' },
       { nom: 'motif', label: 'Motif', type: 'textarea', obligatoire: true }
     ],
-    documentsRequis: ['decision_retenue.pdf', 'justificatif.pdf'],
+    documentsObligatoires: ['decision_retenue.pdf', 'justificatif.pdf'],
+    documentsFacultatifs: [],
     rolesApprobateurs: ['FINANCE'],
     delaiTraitement: 10
   },
@@ -873,7 +930,8 @@ export const CODES_MOUVEMENT_COMPLET: Record<string, CodeMouvementInfo> = {
       { nom: 'date_operation', label: "Date de l'opération", type: 'date', obligatoire: true },
       { nom: 'echeancier', label: "Échéancier de remboursement", type: 'text' }
     ],
-    documentsRequis: ['demande_avance.pdf', 'justificatif_besoin.pdf'],
+    documentsObligatoires: ['demande_avance.pdf', 'justificatif_besoin.pdf'],
+    documentsFacultatifs: [],
     rolesApprobateurs: ['DREN', 'FINANCE'],
     delaiTraitement: 10
   },
@@ -890,7 +948,8 @@ export const CODES_MOUVEMENT_COMPLET: Record<string, CodeMouvementInfo> = {
       { nom: 'periode', label: 'Période concernée', type: 'text', obligatoire: true },
       { nom: 'modalite_remboursement', label: 'Modalité de remboursement', type: 'textarea' }
     ],
-    documentsRequis: ['calcul_trop_percu.pdf', 'decision_regularisation.pdf'],
+    documentsObligatoires: ['calcul_trop_percu.pdf', 'decision_regularisation.pdf'],
+    documentsFacultatifs: [],
     rolesApprobateurs: ['FINANCE'],
     delaiTraitement: 15
   },
@@ -905,7 +964,8 @@ export const CODES_MOUVEMENT_COMPLET: Record<string, CodeMouvementInfo> = {
       { nom: 'beneficiaire', label: 'Bénéficiaire', type: 'text', obligatoire: true },
       { nom: 'reference_jugement', label: 'Référence du jugement', type: 'text', obligatoire: true }
     ],
-    documentsRequis: ['decision_justice.pdf', 'notification.pdf'],
+    documentsObligatoires: ['decision_justice.pdf', 'notification.pdf'],
+    documentsFacultatifs: [],
     rolesApprobateurs: ['FINANCE'],
     delaiTraitement: 5
   },
@@ -921,7 +981,8 @@ export const CODES_MOUVEMENT_COMPLET: Record<string, CodeMouvementInfo> = {
       { nom: 'modalite', label: 'Modalité de reversement', type: 'select', options: ['Une fois', 'Mensuel'], obligatoire: true },
       { nom: 'nombre_mensualites', label: 'Nombre de mensualités', type: 'number' }
     ],
-    documentsRequis: ['calcul_reversement.pdf', 'accord_reversement.pdf'],
+    documentsObligatoires: ['calcul_reversement.pdf', 'accord_reversement.pdf'],
+    documentsFacultatifs: [],
     rolesApprobateurs: ['FINANCE'],
     delaiTraitement: 15
   },
@@ -938,7 +999,8 @@ export const CODES_MOUVEMENT_COMPLET: Record<string, CodeMouvementInfo> = {
       { nom: 'periode', label: 'Période', type: 'text', obligatoire: true },
       { nom: 'motif', label: 'Motif', type: 'textarea', obligatoire: true }
     ],
-    documentsRequis: ['calcul_indemnites.pdf', 'decision_regularisation.pdf'],
+    documentsObligatoires: ['calcul_indemnites.pdf', 'decision_regularisation.pdf'],
+    documentsFacultatifs: [],
     rolesApprobateurs: ['FINANCE'],
     delaiTraitement: 15
   },
@@ -954,7 +1016,8 @@ export const CODES_MOUVEMENT_COMPLET: Record<string, CodeMouvementInfo> = {
       { nom: 'montant_moins_percu', label: 'Montant moins-perçu', type: 'number', obligatoire: true },
       { nom: 'periode', label: 'Période concernée', type: 'text', obligatoire: true }
     ],
-    documentsRequis: ['calcul_moins_percu.pdf', 'decision_regularisation.pdf'],
+    documentsObligatoires: ['calcul_moins_percu.pdf', 'decision_regularisation.pdf'],
+    documentsFacultatifs: [],
     rolesApprobateurs: ['FINANCE'],
     delaiTraitement: 15
   },
@@ -970,7 +1033,8 @@ export const CODES_MOUVEMENT_COMPLET: Record<string, CodeMouvementInfo> = {
       { nom: 'banque', label: 'Banque', type: 'text' },
       { nom: 'date_effet', label: "Date d'effet", type: 'date', obligatoire: true }
     ],
-    documentsRequis: ['demande_changement.pdf', 'rib.pdf'],
+    documentsObligatoires: ['demande_changement.pdf', 'rib.pdf'],
+    documentsFacultatifs: [],
     rolesApprobateurs: ['FINANCE'],
     delaiTraitement: 5
   },
@@ -987,7 +1051,8 @@ export const CODES_MOUVEMENT_COMPLET: Record<string, CodeMouvementInfo> = {
       { nom: 'montant', label: 'Montant', type: 'number' },
       { nom: 'periodicite', label: 'Périodicité', type: 'select', options: ['Mensuel', 'Trimestriel', 'Annuel'] }
     ],
-    documentsRequis: ['demande_creation.pdf', 'justificatif.pdf'],
+    documentsObligatoires: ['demande_creation.pdf', 'justificatif.pdf'],
+    documentsFacultatifs: [],
     rolesApprobateurs: ['FINANCE'],
     delaiTraitement: 10
   },
@@ -1003,7 +1068,8 @@ export const CODES_MOUVEMENT_COMPLET: Record<string, CodeMouvementInfo> = {
       { nom: 'motif', label: 'Motif', type: 'textarea', obligatoire: true },
       { nom: 'date_effet', label: "Date d'effet", type: 'date', obligatoire: true }
     ],
-    documentsRequis: ['demande_modification.pdf', 'justificatif.pdf'],
+    documentsObligatoires: ['demande_modification.pdf', 'justificatif.pdf'],
+    documentsFacultatifs: [],
     rolesApprobateurs: ['FINANCE'],
     delaiTraitement: 10
   },
@@ -1020,7 +1086,8 @@ export const CODES_MOUVEMENT_COMPLET: Record<string, CodeMouvementInfo> = {
       { nom: 'etablissement', label: 'Établissement', type: 'text', obligatoire: true },
       { nom: 'promotion', label: 'Promotion', type: 'text', obligatoire: true }
     ],
-    documentsRequis: ['demande_matricule.pdf', 'acte_naissance.pdf'],
+    documentsObligatoires: ['demande_matricule.pdf', 'acte_naissance.pdf'],
+    documentsFacultatifs: [],
     rolesApprobateurs: ['DREN', 'MEN'],
     delaiTraitement: 10
   },
@@ -1037,7 +1104,8 @@ export const CODES_MOUVEMENT_COMPLET: Record<string, CodeMouvementInfo> = {
       { nom: 'duree', label: 'Durée (mois)', type: 'number', obligatoire: true },
       { nom: 'motif', label: 'Motif', type: 'textarea', obligatoire: true }
     ],
-    documentsRequis: ['demande_affectation.pdf', 'accord_exterieur.pdf'],
+    documentsObligatoires: ['demande_affectation.pdf', 'accord_exterieur.pdf'],
+    documentsFacultatifs: [],
     rolesApprobateurs: ['DREN', 'MEN'],
     delaiTraitement: 20
   },
@@ -1054,7 +1122,8 @@ export const CODES_MOUVEMENT_COMPLET: Record<string, CodeMouvementInfo> = {
       { nom: 'motif', label: 'Motif', type: 'textarea', obligatoire: true },
       { nom: 'date_effet', label: "Date d'effet", type: 'date', obligatoire: true }
     ],
-    documentsRequis: ['demande_modification.pdf', 'justificatif_changement.pdf'],
+    documentsObligatoires: ['demande_modification.pdf', 'justificatif_changement.pdf'],
+    documentsFacultatifs: [],
     rolesApprobateurs: ['DREN', 'MEN'],
     delaiTraitement: 15
   },
@@ -1070,7 +1139,8 @@ export const CODES_MOUVEMENT_COMPLET: Record<string, CodeMouvementInfo> = {
       { nom: 'date_effet', label: "Date d'effet", type: 'date', obligatoire: true },
       { nom: 'consequences', label: 'Conséquences', type: 'textarea' }
     ],
-    documentsRequis: ['decision_declassement.pdf', 'rapport.pdf'],
+    documentsObligatoires: ['decision_declassement.pdf', 'rapport.pdf'],
+    documentsFacultatifs: [],
     rolesApprobateurs: ['DREN', 'MEN'],
     delaiTraitement: 20
   },
@@ -1087,12 +1157,13 @@ export const CODES_MOUVEMENT_COMPLET: Record<string, CodeMouvementInfo> = {
       { nom: 'duree', label: 'Durée (ans)', type: 'number', obligatoire: true },
       { nom: 'poste_occupe', label: 'Poste occupé', type: 'text', obligatoire: true }
     ],
-    documentsRequis: ['demande_validation.pdf', 'justificatifs_services.pdf'],
+    documentsObligatoires: ['demande_validation.pdf', 'justificatifs_services.pdf'],
+    documentsFacultatifs: [],
     rolesApprobateurs: ['DREN', 'MEN'],
     delaiTraitement: 20
   },
 
-  // VII - CAS D'EXCLUSION (80-85)
+  // ==================== VII - EXCLUSION (80-85) ====================
   '80': {
     code: '80',
     libelle: 'Exclusion temporaire',
@@ -1105,7 +1176,8 @@ export const CODES_MOUVEMENT_COMPLET: Record<string, CodeMouvementInfo> = {
       { nom: 'motif', label: 'Motif', type: 'textarea', obligatoire: true },
       { nom: 'reference_decision', label: 'Référence décision', type: 'text', obligatoire: true }
     ],
-    documentsRequis: ['decision_exclusion.pdf', 'rapport_disciplinaire.pdf'],
+    documentsObligatoires: ['decision_exclusion.pdf', 'rapport_disciplinaire.pdf'],
+    documentsFacultatifs: [],
     rolesApprobateurs: ['DREN', 'MEN'],
     delaiTraitement: 10
   },
@@ -1120,7 +1192,8 @@ export const CODES_MOUVEMENT_COMPLET: Record<string, CodeMouvementInfo> = {
       { nom: 'nouvelle_nationalite', label: 'Nouvelle nationalité', type: 'text', obligatoire: true },
       { nom: 'reference_decision', label: 'Référence décision', type: 'text', obligatoire: true }
     ],
-    documentsRequis: ['decision_perte_nationalite.pdf', 'document_officiel.pdf'],
+    documentsObligatoires: ['decision_perte_nationalite.pdf', 'document_officiel.pdf'],
+    documentsFacultatifs: [],
     rolesApprobateurs: ['DREN', 'MEN'],
     delaiTraitement: 15
   },
@@ -1135,7 +1208,8 @@ export const CODES_MOUVEMENT_COMPLET: Record<string, CodeMouvementInfo> = {
       { nom: 'motif', label: 'Motif', type: 'textarea', obligatoire: true },
       { nom: 'duree_prevue', label: 'Durée prévue', type: 'text' }
     ],
-    documentsRequis: ['decision_incarceration.pdf', 'notification_justice.pdf'],
+    documentsObligatoires: ['decision_incarceration.pdf', 'notification_justice.pdf'],
+    documentsFacultatifs: [],
     rolesApprobateurs: ['DREN', 'MEN'],
     delaiTraitement: 5
   },
@@ -1150,7 +1224,8 @@ export const CODES_MOUVEMENT_COMPLET: Record<string, CodeMouvementInfo> = {
       { nom: 'avis_medical', label: 'Avis médical', type: 'text', obligatoire: true },
       { nom: 'reclassement_possible', label: 'Reclassement possible', type: 'checkbox' }
     ],
-    documentsRequis: ['certificat_medical_definitif.pdf', 'avis_commission.pdf'],
+    documentsObligatoires: ['certificat_medical_definitif.pdf', 'avis_commission.pdf'],
+    documentsFacultatifs: [],
     rolesApprobateurs: ['DREN', 'MEN'],
     delaiTraitement: 20
   },
@@ -1165,7 +1240,8 @@ export const CODES_MOUVEMENT_COMPLET: Record<string, CodeMouvementInfo> = {
       { nom: 'reference_decision', label: 'Référence décision', type: 'text', obligatoire: true },
       { nom: 'droit_pension', label: 'Droit à pension', type: 'checkbox' }
     ],
-    documentsRequis: ['decision_radiation.pdf', 'motif_radiation.pdf'],
+    documentsObligatoires: ['decision_radiation.pdf', 'motif_radiation.pdf'],
+    documentsFacultatifs: [],
     rolesApprobateurs: ['DREN', 'MEN'],
     delaiTraitement: 15
   },
@@ -1181,7 +1257,8 @@ export const CODES_MOUVEMENT_COMPLET: Record<string, CodeMouvementInfo> = {
       { nom: 'date_fin', label: 'Date de fin', type: 'date' },
       { nom: 'motif', label: 'Motif', type: 'textarea', obligatoire: true }
     ],
-    documentsRequis: ['rapport_enquete.pdf', 'decision_regularisation.pdf'],
+    documentsObligatoires: ['rapport_enquete.pdf', 'decision_regularisation.pdf'],
+    documentsFacultatifs: [],
     rolesApprobateurs: ['DREN', 'MEN'],
     delaiTraitement: 20
   }

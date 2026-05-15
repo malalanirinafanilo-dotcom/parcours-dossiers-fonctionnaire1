@@ -1,10 +1,12 @@
-# api/serializers.py
+# api/serializers.py - VERSION COMPLÈTE
 from rest_framework import serializers
 from django.contrib.auth import authenticate
-from core.models import User, Role, Notification
+from core.models import User, Role, Notification, AdminActionLog, SystemSetting
 from dossiers.models import Fonctionnaire, Dossier, Document, HistoriqueAction, IAAnalyse, DossierData
 from workflow.models import Workflow
 
+
+# ==================== RÔLES ET UTILISATEURS ====================
 
 class RoleSerializer(serializers.ModelSerializer):
     class Meta:
@@ -37,6 +39,8 @@ class LoginSerializer(serializers.Serializer):
         return data
 
 
+# ==================== FONCTIONNAIRES ====================
+
 class FonctionnaireSerializer(serializers.ModelSerializer):
     class Meta:
         model = Fonctionnaire
@@ -44,12 +48,16 @@ class FonctionnaireSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'created_at']
 
 
+# ==================== WORKFLOW ====================
+
 class WorkflowSerializer(serializers.ModelSerializer):
     class Meta:
         model = Workflow
         fields = '__all__'
         read_only_fields = ['id', 'created_at', 'updated_at']
 
+
+# ==================== DOCUMENTS ====================
 
 class DocumentSerializer(serializers.ModelSerializer):
     upload_by_nom = serializers.CharField(source='upload_by.get_full_name', read_only=True)
@@ -78,6 +86,8 @@ class DocumentSerializer(serializers.ModelSerializer):
         return 0
 
 
+# ==================== HISTORIQUE ====================
+
 class HistoriqueActionSerializer(serializers.ModelSerializer):
     user_nom = serializers.CharField(source='user.get_full_name', read_only=True)
     user_email = serializers.CharField(source='user.email', read_only=True)
@@ -88,12 +98,16 @@ class HistoriqueActionSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'created_at']
 
 
+# ==================== IA ANALYSES ====================
+
 class IAAnalyseSerializer(serializers.ModelSerializer):
     class Meta:
         model = IAAnalyse
         fields = '__all__'
         read_only_fields = ['id', 'created_at']
 
+
+# ==================== DOSSIERS ====================
 
 class DossierSerializer(serializers.ModelSerializer):
     fonctionnaire_nom = serializers.CharField(source='fonctionnaire.nom', read_only=True)
@@ -221,6 +235,8 @@ class DossierDetailSerializer(serializers.ModelSerializer):
             return {}
 
 
+# ==================== ACTIONS ====================
+
 class ValidationActionSerializer(serializers.Serializer):
     commentaire = serializers.CharField(required=False, allow_blank=True)
 
@@ -228,6 +244,8 @@ class ValidationActionSerializer(serializers.Serializer):
 class RejetActionSerializer(serializers.Serializer):
     motif = serializers.CharField(required=True)
 
+
+# ==================== NOTIFICATIONS ====================
 
 class NotificationSerializer(serializers.ModelSerializer):
     dossier_numero = serializers.CharField(source='dossier.numero_dossier', read_only=True)
@@ -271,3 +289,82 @@ class NotificationSerializer(serializers.ModelSerializer):
             return f"Il y a {days} jour{'s' if days > 1 else ''}"
         else:
             return obj.created_at.strftime('%d/%m/%Y')
+
+
+# ==================== SERIALIZERS POUR ADMIN (SUPERUSER) ====================
+
+class UserCreateUpdateSerializer(serializers.ModelSerializer):
+    """Sérializer pour la création et mise à jour d'utilisateurs par l'admin"""
+    password = serializers.CharField(write_only=True, required=False, min_length=8)
+    confirm_password = serializers.CharField(write_only=True, required=False)
+    
+    class Meta:
+        model = User
+        fields = ['id', 'email', 'username', 'first_name', 'last_name', 
+                  'password', 'confirm_password', 'phone_number', 
+                  'is_superuser', 'is_active', 'is_blocked']
+        read_only_fields = ['id']
+    
+    def validate(self, data):
+        # Vérifier que les mots de passe correspondent
+        password = data.get('password')
+        confirm_password = data.get('confirm_password')
+        
+        if password or confirm_password:
+            if password != confirm_password:
+                raise serializers.ValidationError("Les mots de passe ne correspondent pas")
+            if len(password) < 8:
+                raise serializers.ValidationError("Le mot de passe doit contenir au moins 8 caractères")
+        
+        return data
+    
+    def create(self, validated_data):
+        validated_data.pop('confirm_password', None)
+        password = validated_data.pop('password', None)
+        
+        user = super().create(validated_data)
+        if password:
+            user.set_password(password)
+            user.save()
+        return user
+    
+    def update(self, instance, validated_data):
+        validated_data.pop('confirm_password', None)
+        password = validated_data.pop('password', None)
+        
+        user = super().update(instance, validated_data)
+        if password:
+            user.set_password(password)
+            user.save()
+        return user
+
+
+class AdminActionLogSerializer(serializers.ModelSerializer):
+    """Sérializer pour les logs admin"""
+    admin_email = serializers.CharField(source='admin.email', read_only=True)
+    admin_name = serializers.SerializerMethodField()
+    target_user_email = serializers.CharField(source='target_user.email', read_only=True)
+    target_user_name = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = AdminActionLog
+        fields = '__all__'
+        read_only_fields = ['id', 'created_at']
+    
+    def get_admin_name(self, obj):
+        return f"{obj.admin.first_name} {obj.admin.last_name}".strip() or obj.admin.email
+    
+    def get_target_user_name(self, obj):
+        if obj.target_user:
+            return f"{obj.target_user.first_name} {obj.target_user.last_name}".strip() or obj.target_user.email
+        return None
+
+
+class SystemSettingSerializer(serializers.ModelSerializer):
+    """Sérializer pour les paramètres système"""
+    updated_by_email = serializers.CharField(source='updated_by.email', read_only=True)
+    
+    class Meta:
+        model = SystemSetting
+        fields = '__all__'
+        read_only_fields = ['id', 'updated_at']

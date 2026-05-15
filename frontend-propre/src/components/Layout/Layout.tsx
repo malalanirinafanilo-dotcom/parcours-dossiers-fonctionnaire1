@@ -1,66 +1,75 @@
-import React, { useState, useEffect } from 'react';
-import { Outlet } from 'react-router-dom';
-import Header from './Header';
-import Sidebar from './Sidebar';
+import React from 'react';
+import { Outlet, NavLink, useNavigate } from 'react-router-dom';
+import { useDispatch, useSelector } from 'react-redux';
+import { LayoutDashboard, User as UserIcon, LogOut } from 'lucide-react';  // Renommer User en UserIcon
+import { logout } from '../../store/authSlice';
+import { RootState } from '../../store';
 
 const Layout: React.FC = () => {
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [isMobile, setIsMobile] = useState(false);
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const { user } = useSelector((state: RootState) => state.auth);
 
-  // Détecter la taille de l'écran
-  useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768);
-      if (window.innerWidth < 768) {
-        setSidebarOpen(false);
-      }
-    };
-    
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
+  const handleLogout = () => {
+    dispatch(logout());
+    navigate('/login');
+  };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-vert-50 via-white to-emeraude-50">
-      {/* Éléments décoratifs */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-vert-200 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-float"></div>
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-emeraude-200 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-float" style={{ animationDelay: '2s' }}></div>
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-vert-100 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-pulse-slow"></div>
-      </div>
-
-      <Header sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
-      
-      <div className="flex relative">
-        <Sidebar sidebarOpen={sidebarOpen} isMobile={isMobile} setSidebarOpen={setSidebarOpen} />
+    <div className="flex h-screen bg-gray-100">
+      <aside className="w-64 bg-white border-r border-gray-200 flex flex-col">
+        <div className="p-4 border-b border-gray-200">
+          <h1 className="text-xl font-bold text-green-600">Mon Espace</h1>
+          <p className="text-xs text-gray-500 mt-1">{user?.email}</p>
+        </div>
         
-        <main 
-          className={`
-            flex-1 transition-all duration-300 ease-in-out mt-16
-            ${sidebarOpen && !isMobile ? 'ml-64' : 'ml-20'}
-            ${isMobile ? 'ml-0' : ''}
-          `}
-        >
-          <div className="p-4 md:p-6 lg:p-8 animate-fade-in-up">
-            <div className="max-w-7xl mx-auto">
-              <Outlet />
-            </div>
-          </div>
-        </main>
-      </div>
+        <nav className="flex-1 p-4">
+          <ul className="space-y-2">
+            <li>
+              <NavLink
+                to="/dashboard"
+                className={({ isActive }) =>
+                  `flex items-center gap-3 px-4 py-2 rounded-lg transition-colors ${
+                    isActive ? 'bg-green-50 text-green-600' : 'text-gray-700 hover:bg-gray-100'
+                  }`
+                }
+              >
+                <LayoutDashboard size={20} />
+                <span>Dashboard</span>
+              </NavLink>
+            </li>
+            <li>
+              <NavLink
+                to="/profile"
+                className={({ isActive }) =>
+                  `flex items-center gap-3 px-4 py-2 rounded-lg transition-colors ${
+                    isActive ? 'bg-green-50 text-green-600' : 'text-gray-700 hover:bg-gray-100'
+                  }`
+                }
+              >
+                <UserIcon size={20} />
+                <span>Mon profil</span>
+              </NavLink>
+            </li>
+          </ul>
+        </nav>
 
-      {/* Bouton pour remonter en haut (mobile) */}
-      {isMobile && (
-        <button
-          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-          className="fixed bottom-4 right-4 bg-gradient-to-r from-vert-500 to-emeraude-600 
-                     text-white p-3 rounded-full shadow-lg shadow-vert-500/25 
-                     hover:scale-110 transition-all duration-300 z-40"
-        >
-          ↑
-        </button>
-      )}
+        <div className="p-4 border-t border-gray-200">
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-3 px-4 py-2 w-full rounded-lg text-red-600 hover:bg-red-50 transition-colors"
+          >
+            <LogOut size={20} />
+            <span>Déconnexion</span>
+          </button>
+        </div>
+      </aside>
+
+      <main className="flex-1 overflow-y-auto">
+        <div className="p-6">
+          <Outlet />
+        </div>
+      </main>
     </div>
   );
 };

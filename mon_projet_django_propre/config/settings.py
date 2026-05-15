@@ -1,17 +1,32 @@
-# config/settings.py - VERSION COMPLÈTE CORRIGÉE POUR RENDER
+
 import os
 from pathlib import Path
 from decouple import config
 from datetime import timedelta
 import dj_database_url
+from celery.schedules import crontab
 
 # ==================== BASE DU PROJET ====================
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # ==================== SÉCURITÉ ====================
-SECRET_KEY = config('DJANGO_SECRET_KEY', default='django-insecure-key-for-docker')
-DEBUG = config('DEBUG', default=False, cast=bool)
-ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1').split(',')
+SECRET_KEY = config('DJANGO_SECRET_KEY', default='django-insecure-key-for-development')
+DEBUG = config('DEBUG', default=True, cast=bool)
+
+# ==================== ALLOWED HOSTS ====================
+if DEBUG:
+    ALLOWED_HOSTS = [
+        'localhost',
+        '127.0.0.1',
+        '192.168.0.111',      # Votre IP serveur
+        '192.168.0.*',         # Toute la plage réseau local
+        '192.168.1.*',
+        '172.*.*.*',
+        '.local',
+        '*',
+    ]
+else:
+    ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1,.onrender.com').split(',')
 
 # ==================== APPLICATIONS INSTALLÉES ====================
 INSTALLED_APPS = [
@@ -26,6 +41,7 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt',
     'corsheaders',
     'whitenoise.runserver_nostatic',
+    'sslserver',
     
     'core',
     'workflow',
@@ -35,9 +51,9 @@ INSTALLED_APPS = [
 
 # ==================== MIDDLEWARE ====================
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
-    'corsheaders.middleware.CorsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -45,10 +61,6 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
-
-# ==================== ENCODAGES ====================
-DEFAULT_CHARSET = 'utf-8'
-FILE_CHARSET = 'utf-8'
 
 # ==================== URLS ET TEMPLATES ====================
 ROOT_URLCONF = 'config.urls'
@@ -84,7 +96,7 @@ else:
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.postgresql',
-            'NAME': os.environ.get('DB_NAME', config('DB_NAME', default='dossiers_db')),
+            'NAME': os.environ.get('DB_NAME', config('DB_NAME', default='gestion_dossiers')),
             'USER': os.environ.get('DB_USER', config('DB_USER', default='postgres')),
             'PASSWORD': os.environ.get('DB_PASSWORD', config('DB_PASSWORD', default='postgres')),
             'HOST': os.environ.get('DB_HOST', config('DB_HOST', default='localhost')),
@@ -118,14 +130,10 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
-# ==================== SÉCURITÉ ====================
-SECURE_CONTENT_TYPE_NOSNIFF = False
-X_FRAME_OPTIONS = 'SAMEORIGIN' if not DEBUG else 'ALLOWALL'
-
 # ==================== CLÉ PRIMAIRE ====================
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# ==================== REST FRAMEWORK ====================
+# ==================== REST FRAMEWORK AVEC THROTTLING ====================
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
@@ -138,19 +146,31 @@ REST_FRAMEWORK = {
     'DEFAULT_RENDERER_CLASSES': [
         'rest_framework.renderers.JSONRenderer',
     ],
+    'DEFAULT_THROTTLE_CLASSES': [
+        'rest_framework.throttling.AnonRateThrottle',
+        'rest_framework.throttling.UserRateThrottle',
+    ],
+    'DEFAULT_THROTTLE_RATES': {
+        'anon': '5/minute',
+        'user': '60/minute',
+        'login': '5/minute',
+    }
 }
 
-# ==================== JWT ====================
+# ==================== JWT RENFORCÉ ====================
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=30),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
-    'ROTATE_REFRESH_TOKENS': False,
+    'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,
     'ALGORITHM': 'HS256',
     'SIGNING_KEY': SECRET_KEY,
+    'VERIFYING_KEY': None,
     'AUTH_HEADER_TYPES': ('Bearer',),
     'USER_ID_FIELD': 'id',
     'USER_ID_CLAIM': 'user_id',
+    'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
+    'TOKEN_TYPE_CLAIM': 'token_type',
 }
 
 # ==================== REDIS / CELERY ====================
@@ -179,8 +199,6 @@ CELERY_TASK_QUEUES = {
 CELERY_TASK_DEFAULT_QUEUE = 'default'
 
 # ==================== TÂCHES PLANIFIÉES ====================
-from celery.schedules import crontab
-
 CELERY_BEAT_SCHEDULE = {
     'train-models-daily': {
         'task': 'dossiers.tasks.train_models_task',
@@ -198,7 +216,55 @@ CELERY_BEAT_SCHEDULE = {
     },
 }
 
-# ==================== LOGGING (CORRIGÉ) ====================
+# ==================== CORS CONFIGURATION ====================
+if DEBUG:
+    CORS_ALLOW_ALL_ORIGINS = True
+    CORS_ALLOW_CREDENTIALS = True
+else:
+    CORS_ALLOWED_ORIGINS = [
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "https://parcours-dossiers-frontend.onrender.com",
+    ]
+    CORS_ALLOW_CREDENTIALS = True
+
+CORS_ALLOW_METHODS = [
+    'DELETE', 'GET', 'OPTIONS', 'PATCH', 'POST', 'PUT',
+]
+
+CORS_ALLOW_HEADERS = [
+    'accept', 'accept-encoding', 'authorization', 'content-type',
+    'dnt', 'origin', 'user-agent', 'x-csrftoken', 'x-requested-with',
+]
+
+# ==================== CSRF ====================
+if DEBUG:
+    CSRF_TRUSTED_ORIGINS = [
+        'http://localhost:3000',
+        'http://127.0.0.1:3000',
+        'http://192.168.0.111:3000',
+        'http://192.168.0.111:8000',
+        'http://localhost:8000',
+    ]
+else:
+    CSRF_TRUSTED_ORIGINS = CORS_ALLOWED_ORIGINS
+
+# ==================== SÉCURITÉ ====================
+if not DEBUG:
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SESSION_COOKIE_HTTPONLY = True
+    CSRF_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = 'Strict'
+    CSRF_COOKIE_SAMESITE = 'Strict'
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    X_FRAME_OPTIONS = 'SAMEORIGIN'
+else:
+    SESSION_COOKIE_SECURE = False
+    CSRF_COOKIE_SECURE = False
+    X_FRAME_OPTIONS = 'ALLOWALL'
+
+# ==================== LOGGING ====================
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
@@ -207,11 +273,16 @@ LOGGING = {
             'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
             'style': '{',
         },
+        'simple': {
+            'format': '{levelname} {message}',
+            'style': '{',
+        },
     },
     'handlers': {
         'console': {
             'level': 'INFO',
             'class': 'logging.StreamHandler',
+            'formatter': 'simple',
         },
     },
     'loggers': {
@@ -227,29 +298,21 @@ LOGGING = {
         },
     },
 }
+# ==================== EN-TÊTES DE SÉCURITÉ SUPPLÉMENTAIRES ====================
+SECURE_BROWSER_XSS_FILTER = True
+SECURE_CONTENT_TYPE_NOSNIFF = True
+X_FRAME_OPTIONS = 'DENY'
 
-# ==================== CORS CONFIGURATION ====================
-# ⚠️ CES LIGNES DOIVENT ÊTRE APRÈS LE DICTIONNAIRE LOGGING
-CORS_ALLOW_ALL_ORIGINS = True
-CORS_ALLOW_CREDENTIALS = True
+# Referrer Policy
+SECURE_REFERRER_POLICY = 'strict-origin-when-cross-origin'
 
-CORS_ALLOW_METHODS = [
-    'DELETE',
-    'GET',
-    'OPTIONS',
-    'PATCH',
-    'POST',
-    'PUT',
-]
+# Cross-Origin Policies (si vous utilisez des ressources externes)
+CROSS_ORIGIN_OPENER_POLICY = 'same-origin'
+CROSS_ORIGIN_EMBEDDER_POLICY = 'require-corp'
 
-CORS_ALLOW_HEADERS = [
-    'accept',
-    'accept-encoding',
-    'authorization',
-    'content-type',
-    'dnt',
-    'origin',
-    'user-agent',
-    'x-csrftoken',
-    'x-requested-with',
-]
+# HSTS - uniquement en production
+if not DEBUG:
+    SECURE_HSTS_SECONDS = 31536000  # 1 an
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+    SECURE_SSL_REDIRECT = True

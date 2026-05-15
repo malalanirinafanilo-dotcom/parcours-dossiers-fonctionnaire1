@@ -1,4 +1,6 @@
-// src/types/index.ts
+// src/types/index.ts - VERSION UNIFIÉE COMPLÈTE
+
+// ==================== TYPES UTILISATEURS & AUTH ====================
 
 export interface User {
   id: string;
@@ -6,9 +8,16 @@ export interface User {
   username: string;
   first_name: string;
   last_name: string;
-  role: Role;
+  role?: Role;                    // Pour la gestion des rôles existants
   phone_number?: string;
   is_active: boolean;
+  is_superuser: boolean;          // Pour le système superuser
+  is_blocked: boolean;            // Blocage spécifique
+  blocked_at?: string;
+  blocked_by?: string;
+  last_login_ip?: string;
+  created_at: string;
+  updated_at?: string;
 }
 
 export interface Role {
@@ -28,6 +37,56 @@ export interface AuthResponse {
   refresh: string;
   user?: User;
 }
+
+// ==================== TYPES ADMIN ====================
+
+export interface DashboardStats {
+  total_users: number;
+  superusers: number;
+  blocked_users: number;
+  active_users: number;
+  new_users_today?: number;
+  active_sessions_24h?: number;
+  admin_actions_today?: number;
+}
+
+export interface AdminDashboardStats {
+  total_users: number;
+  new_users_today: number;
+  active_sessions: number;
+  admin_actions_today: number;
+}
+
+export interface AdminLog {
+  id: string;
+  admin_email: string;
+  admin_name?: string;
+  action_type: string;
+  description: string;
+  target_user_email: string | null;
+  target_user_name?: string | null;
+  ip_address?: string;
+  user_agent?: string;
+  metadata?: Record<string, any>;
+  created_at: string;
+}
+
+export interface SystemSetting {
+  id: string;
+  key: string;
+  value: string;
+  description: string;
+  updated_by?: string;
+  updated_by_email?: string;
+  updated_at?: string;
+}
+
+export interface RecentActivity {
+  recent_logs: AdminLog[];
+  recent_users: User[];
+}
+
+// ==================== TYPES DOSSIERS (EXISTANTS) ====================
 
 export interface Fonctionnaire {
   id: string;
@@ -56,7 +115,42 @@ export interface Workflow {
   updated_at: string;
 }
 
-// ==================== DOSSIER (Version complète et unique) ====================
+export interface Document {
+  id: string;
+  dossier: string;
+  nom: string;
+  fichier: string;
+  url?: string;
+  type_document: string;
+  taille?: number;
+  upload_by: string;
+  upload_by_nom?: string;
+  created_at: string;
+}
+
+export interface HistoriqueAction {
+  id: string;
+  dossier: string;
+  user: string;
+  user_nom?: string;
+  user_email?: string;
+  action: 'CREATION' | 'VALIDATION' | 'REJET' | 'TRANSFERT' | 'MODIFICATION' | 'BLOQUAGE';
+  etape: string;
+  commentaire?: string;
+  metadata: Record<string, any>;
+  created_at: string;
+}
+
+export interface IAAnalyse {
+  id: string;
+  dossier: string;
+  type_analyse: 'RULE_BASED' | 'ML';
+  resultats: Record<string, any>;
+  score_risque?: number;
+  classification?: string;
+  created_at: string;
+}
+
 export interface Dossier {
   id: string;
   numero_dossier: string;
@@ -99,41 +193,7 @@ export interface DossierDetail extends Dossier {
   derniere_analyse_ia?: IAAnalyse;
 }
 
-export interface Document {
-  id: string;
-  dossier: string;
-  nom: string;
-  fichier: string;
-  url?: string;
-  type_document: string;
-  taille?: number;
-  upload_by: string;
-  upload_by_nom?: string;
-  created_at: string;
-}
-
-export interface HistoriqueAction {
-  id: string;
-  dossier: string;
-  user: string;
-  user_nom?: string;
-  user_email?: string;
-  action: 'CREATION' | 'VALIDATION' | 'REJET' | 'TRANSFERT' | 'MODIFICATION' | 'BLOQUAGE';
-  etape: string;
-  commentaire?: string;
-  metadata: Record<string, any>;
-  created_at: string;
-}
-
-export interface IAAnalyse {
-  id: string;
-  dossier: string;
-  type_analyse: 'RULE_BASED' | 'ML';
-  resultats: Record<string, any>;
-  score_risque?: number;
-  classification?: string;
-  created_at: string;
-}
+// ==================== TYPES STATISTIQUES ====================
 
 export interface Statistiques {
   enCours: number;
@@ -159,6 +219,8 @@ export interface Statistiques {
   };
 }
 
+// ==================== TYPES NOTIFICATIONS ====================
+
 export interface Notification {
   id: string;
   user: string;
@@ -176,7 +238,8 @@ export interface Notification {
   time_ago?: string;
 }
 
-// ==================== TYPES POUR LES CODES MOUVEMENT ====================
+// ==================== TYPES CODES MOUVEMENT ====================
+
 export type CodeMouvement = string;
 
 export interface CodeMouvementInfo {

@@ -10,7 +10,7 @@ from django.utils import timezone
 from django.core.exceptions import ValidationError
 from django.http import JsonResponse
 from django.conf import settings
-from core.models import User, Role, Notification
+from core.models import User, Role, Notification, AdminActionLog, SystemSetting
 from dossiers.models import Fonctionnaire, Dossier, Document, HistoriqueAction, IAAnalyse
 from workflow.models import Workflow
 from .serializers import (
@@ -19,8 +19,11 @@ from .serializers import (
     DossierDetailSerializer, DocumentSerializer,
     HistoriqueActionSerializer, IAAnalyseSerializer,
     ValidationActionSerializer, RejetActionSerializer,
-    NotificationSerializer
+    NotificationSerializer,
+    # Nouveaux sérializers admin
+    UserCreateUpdateSerializer, AdminActionLogSerializer, SystemSettingSerializer
 )
+from .permissions import IsSuperUser
 import logging
 import traceback
 import uuid
@@ -58,11 +61,44 @@ def debug_media(request):
     })
 
 
-# ==================== VIEWSETS PRINCIPAUX ====================
+# ==================== AUTHENTIFICATION ====================
+
+class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
+    def validate(self, attrs):
+        data = super().validate(attrs)
+        
+        # Récupérer le rôle de l'utilisateur
+        user_role = None
+        if hasattr(self.user, 'role') and self.user.role:
+            user_role = {
+                'id': self.user.role.id,
+                'code': self.user.role.code,
+                'name': self.user.role.name
+            }
+        
+        # Ajouter les infos utilisateur dans la réponse
+        data['user'] = {
+            'id': str(self.user.id),
+            'email': self.user.email,
+            'username': self.user.username,
+            'first_name': self.user.first_name,
+            'last_name': self.user.last_name,
+            'is_superuser': self.user.is_superuser,
+            'is_active': self.user.is_active,
+            'is_blocked': getattr(self.user, 'is_blocked', False),
+            'role': user_role,
+            'phone_number': getattr(self.user, 'phone_number', ''),
+            'created_at': self.user.date_joined.isoformat() if hasattr(self.user, 'date_joined') else None,
+        }
+        
+        return data
+
 
 class CustomTokenObtainPairView(TokenObtainPairView):
-    serializer_class = TokenObtainPairSerializer
+    serializer_class = CustomTokenObtainPairSerializer
 
+
+# ==================== VIEWSETS PRINCIPAUX (EXISTANTS) ====================
 
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
@@ -131,7 +167,7 @@ class DossierViewSet(viewsets.ModelViewSet):
         
         role_code = user.role.code
         
-        if role_code == 'ADMIN':
+        if role_code == 'ADMIN' or user.is_superuser:
             return queryset
         
         if role_code == 'UTILISATEUR':
@@ -189,7 +225,7 @@ class DossierViewSet(viewsets.ModelViewSet):
         except ValidationError as e:
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            logger.error(f"❌ Erreur: {e}")
+            logger.error(f"Erreur: {e}")
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
     @action(detail=True, methods=['post'])
@@ -209,7 +245,7 @@ class DossierViewSet(viewsets.ModelViewSet):
         except ValidationError as e:
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            logger.error(f"❌ Erreur: {e}")
+            logger.error(f"Erreur: {e}")
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
     @action(detail=True, methods=['post'])
@@ -234,7 +270,7 @@ class DossierViewSet(viewsets.ModelViewSet):
         except ValidationError as e:
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            logger.error(f"❌ Erreur: {e}")
+            logger.error(f"Erreur: {e}")
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
     @action(detail=True, methods=['get'])
@@ -306,7 +342,7 @@ class DossierViewSet(viewsets.ModelViewSet):
                 }, status=status.HTTP_400_BAD_REQUEST)
                 
         except Exception as e:
-            logger.error(f"❌ Erreur analyse IA: {e}")
+            logger.error(f"Erreur analyse IA: {e}")
             traceback.print_exc()
             return Response({
                 'success': False,
@@ -368,7 +404,7 @@ class IAAnalyseViewSet(viewsets.ModelViewSet):
             else:
                 return Response({'error': resultat['error']}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            logger.error(f"❌ Erreur analyse IA: {e}")
+            logger.error(f"Erreur analyse IA: {e}")
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
@@ -402,6 +438,209 @@ class NotificationViewSet(viewsets.ModelViewSet):
     def compte_non_lues(self, request):
         count = Notification.objects.filter(user=request.user, lu=False).count()
         return Response({'count': count})
+
+
+# ==================== PROFIL UTILISATEUR ====================
+
+class UserProfileViewSet(viewsets.ReadOnlyModelViewSet):
+    """Profil utilisateur - accessible par l'utilisateur lui-même"""
+    serializer_class = UserSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get_queryset(self):
+        return User.objects.filter(id=self.request.user.id)
+    
+    @action(detail=False, methods=['get', 'patch'])
+    def me(self, request):
+        user = request.user
+        if request.method == 'GET':
+            serializer = self.get_serializer(user)
+            return Response(serializer.data)
+        else:
+            serializer = UserSerializer(user, data=request.data, partial=True)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+# ==================== VUES ADMIN (SUPERUSER) ====================
+
+class AdminUserViewSet(viewsets.ModelViewSet):
+    """Gestion des utilisateurs par le superuser"""
+    permission_classes = [permissions.IsAuthenticated, IsSuperUser]
+    queryset = User.objects.all().order_by('-created_at')
+    
+    def get_serializer_class(self):
+        if self.action in ['create', 'update', 'partial_update']:
+            return UserCreateUpdateSerializer
+        return UserSerializer
+    
+    @action(detail=True, methods=['post'])
+    def block(self, request, pk=None):
+        user = self.get_object()
+        
+        if user.is_superuser:
+            return Response({'error': 'Impossible de bloquer un superutilisateur'}, 
+                          status=status.HTTP_400_BAD_REQUEST)
+        
+        user.is_blocked = True
+        user.is_active = False
+        user.blocked_at = timezone.now()
+        user.blocked_by = request.user
+        user.save()
+        
+        AdminActionLog.objects.create(
+            admin=request.user,
+            action_type='BLOCK',
+            target_user=user,
+            description=f"Utilisateur {user.email} bloqué",
+            ip_address=self.get_client_ip(request),
+            user_agent=request.META.get('HTTP_USER_AGENT', ''),
+            metadata={'reason': request.data.get('reason', '')}
+        )
+        
+        return Response({'message': f'Utilisateur {user.email} bloqué avec succès'})
+    
+    @action(detail=True, methods=['post'])
+    def unblock(self, request, pk=None):
+        user = self.get_object()
+        user.is_blocked = False
+        user.is_active = True
+        user.blocked_at = None
+        user.blocked_by = None
+        user.save()
+        
+        AdminActionLog.objects.create(
+            admin=request.user,
+            action_type='UNBLOCK',
+            target_user=user,
+            description=f"Utilisateur {user.email} débloqué",
+            ip_address=self.get_client_ip(request),
+            user_agent=request.META.get('HTTP_USER_AGENT', '')
+        )
+        
+        return Response({'message': f'Utilisateur {user.email} débloqué avec succès'})
+    
+    @action(detail=True, methods=['post'])
+    def toggle_superuser(self, request, pk=None):
+        user = self.get_object()
+        
+        if user == request.user:
+            return Response({'error': 'Vous ne pouvez pas modifier votre propre statut'}, 
+                          status=status.HTTP_400_BAD_REQUEST)
+        
+        user.is_superuser = not user.is_superuser
+        user.save()
+        
+        status_text = "superutilisateur" if user.is_superuser else "utilisateur normal"
+        
+        AdminActionLog.objects.create(
+            admin=request.user,
+            action_type='UPDATE',
+            target_user=user,
+            description=f"Statut de {user.email} changé en {status_text}",
+            ip_address=self.get_client_ip(request),
+            user_agent=request.META.get('HTTP_USER_AGENT', '')
+        )
+        
+        return Response({'message': f"{user.email} est maintenant {status_text}"})
+    
+    @action(detail=False, methods=['get'])
+    def stats(self, request):
+        """Statistiques des utilisateurs"""
+        total_users = User.objects.count()
+        superusers = User.objects.filter(is_superuser=True).count()
+        blocked_users = User.objects.filter(is_blocked=True).count()
+        active_users = User.objects.filter(is_active=True, is_blocked=False).count()
+        new_users_today = User.objects.filter(created_at__date=timezone.now().date()).count()
+        active_sessions_24h = User.objects.filter(last_login__gte=timezone.now() - timezone.timedelta(hours=24)).count()
+        admin_actions_today = AdminActionLog.objects.filter(created_at__date=timezone.now().date()).count()
+        
+        return Response({
+            'total_users': total_users,
+            'superusers': superusers,
+            'blocked_users': blocked_users,
+            'active_users': active_users,
+            'new_users_today': new_users_today,
+            'active_sessions_24h': active_sessions_24h,
+            'admin_actions_today': admin_actions_today,
+        })
+    
+    def get_client_ip(self, request):
+        x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+        if x_forwarded_for:
+            ip = x_forwarded_for.split(',')[0]
+        else:
+            ip = request.META.get('REMOTE_ADDR')
+        return ip
+
+
+class AdminDashboardViewSet(viewsets.ViewSet):
+    """Dashboard superuser"""
+    permission_classes = [permissions.IsAuthenticated, IsSuperUser]
+    
+    @action(detail=False, methods=['get'])
+    def stats(self, request):
+        """Statistiques globales"""
+        now = timezone.now()
+        today = now.date()
+        
+        return Response({
+            'total_users': User.objects.count(),
+            'new_users_today': User.objects.filter(created_at__date=today).count(),
+            'active_sessions_24h': User.objects.filter(last_login__gte=now - timezone.timedelta(hours=24)).count(),
+            'admin_actions_today': AdminActionLog.objects.filter(created_at__date=today).count(),
+        })
+    
+    @action(detail=False, methods=['get'])
+    def recent_activity(self, request):
+        """Activité récente"""
+        recent_logs = AdminActionLog.objects.all().select_related('admin', 'target_user')[:20]
+        recent_users = User.objects.all().order_by('-created_at')[:10]
+        
+        logs_serializer = AdminActionLogSerializer(recent_logs, many=True)
+        users_serializer = UserSerializer(recent_users, many=True)
+        
+        return Response({
+            'recent_logs': logs_serializer.data,
+            'recent_users': users_serializer.data,
+        })
+
+
+class AdminLogViewSet(viewsets.ReadOnlyModelViewSet):
+    """Consultation des logs admin"""
+    permission_classes = [permissions.IsAuthenticated, IsSuperUser]
+    queryset = AdminActionLog.objects.all().select_related('admin', 'target_user')
+    serializer_class = AdminActionLogSerializer
+    
+    @action(detail=False, methods=['get'])
+    def recent(self, request):
+        logs = self.get_queryset()[:50]
+        serializer = self.get_serializer(logs, many=True)
+        return Response(serializer.data)
+
+
+class AdminSettingViewSet(viewsets.ModelViewSet):
+    """Gestion des paramètres système"""
+    permission_classes = [permissions.IsAuthenticated, IsSuperUser]
+    queryset = SystemSetting.objects.all()
+    serializer_class = SystemSettingSerializer
+    
+    def perform_update(self, serializer):
+        serializer.save(updated_by=self.request.user)
+    
+    def perform_create(self, serializer):
+        serializer.save(updated_by=self.request.user)
+    
+    @action(detail=False, methods=['get'])
+    def get_by_key(self, request):
+        key = request.query_params.get('key')
+        try:
+            setting = SystemSetting.objects.get(key=key)
+            return Response({'value': setting.value})
+        except SystemSetting.DoesNotExist:
+            return Response({'value': None})
 
 
 # ==================== ENDPOINTS POUR CRÉER LES COMPTES ====================
@@ -468,8 +707,6 @@ def create_admin_endpoint(request):
         }
     })
 
-
-# ==================== ENDPOINT CREATE ALL USERS (UNIQUE) ====================
 
 @api_view(['GET', 'POST'])
 @permission_classes([AllowAny])

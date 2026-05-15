@@ -1,4 +1,3 @@
-// src/services/dossierService.ts - VERSION COMPLÈTE CORRIGÉE
 import api from './api';
 import { Dossier, DossierDetail, Document, Statistiques, StatistiquesCompte } from '../types';
 import toast from 'react-hot-toast';

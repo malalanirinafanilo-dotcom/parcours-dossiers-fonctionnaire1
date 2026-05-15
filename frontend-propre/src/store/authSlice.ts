@@ -1,10 +1,12 @@
+// src/store/authSlice.ts - VERSION UNIFIÉE COMPLÈTE
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import { authService } from '../services/auth';
+import { authService } from '../services/authService';
 import { User, LoginCredentials } from '../types';
 
 interface AuthState {
   user: User | null;
   isAuthenticated: boolean;
+  isSuperUser: boolean;
   loading: boolean;
   error: string | null;
 }
@@ -15,7 +17,7 @@ const loadUserFromStorage = (): User | null => {
   if (userStr) {
     try {
       const user = JSON.parse(userStr);
-      console.log('👤 Utilisateur chargé du localStorage:', user);
+      console.log('👤 Utilisateur chargé du localStorage:', user.email);
       return user;
     } catch (e) {
       console.error('Erreur lors du chargement de l\'utilisateur:', e);
@@ -28,6 +30,7 @@ const loadUserFromStorage = (): User | null => {
 const initialState: AuthState = {
   user: loadUserFromStorage(),
   isAuthenticated: authService.isAuthenticated(),
+  isSuperUser: authService.isAuthenticated() ? (loadUserFromStorage()?.is_superuser || false) : false,
   loading: false,
   error: null,
 };
@@ -36,17 +39,23 @@ export const login = createAsyncThunk(
   'auth/login',
   async (credentials: LoginCredentials, { rejectWithValue }) => {
     try {
+      console.log('🔑 Tentative de connexion pour:', credentials.email);
       const response = await authService.login(credentials);
-      console.log('🔑 Réponse login:', response);
       
+      console.log('✅ Connexion réussie - Utilisateur:', response.user?.email);
+      
+      // Sauvegarder l'utilisateur dans localStorage
       if (response.user) {
         localStorage.setItem('user', JSON.stringify(response.user));
-        console.log('💾 Utilisateur sauvegardé dans localStorage:', response.user);
       }
+      
       return response.user;
     } catch (error: any) {
       console.error('❌ Erreur login:', error);
-      return rejectWithValue(error.response?.data?.detail || 'Erreur de connexion');
+      const errorMessage = error.response?.data?.detail || 
+                          error.response?.data?.message || 
+                          'Email ou mot de passe incorrect';
+      return rejectWithValue(errorMessage);
     }
   }
 );
@@ -60,7 +69,15 @@ const authSlice = createSlice({
       localStorage.removeItem('user');
       state.user = null;
       state.isAuthenticated = false;
+      state.isSuperUser = false;
       console.log('🚪 Utilisateur déconnecté');
+    },
+    updateUser: (state, action) => {
+      state.user = action.payload;
+      state.isSuperUser = action.payload?.is_superuser || false;
+      if (action.payload) {
+        localStorage.setItem('user', JSON.stringify(action.payload));
+      }
     },
   },
   extraReducers: (builder) => {
@@ -74,7 +91,9 @@ const authSlice = createSlice({
         state.loading = false;
         state.isAuthenticated = true;
         state.user = action.payload || null;
-        console.log('✅ Connexion réussie - Utilisateur:', action.payload);
+        state.isSuperUser = action.payload?.is_superuser || false;
+        console.log('✅ Utilisateur connecté:', action.payload?.email);
+        console.log('👑 SuperUser:', state.isSuperUser);
       })
       .addCase(login.rejected, (state, action) => {
         state.loading = false;
@@ -84,5 +103,5 @@ const authSlice = createSlice({
   },
 });
 
-export const { logout } = authSlice.actions;
+export const { logout, updateUser } = authSlice.actions;
 export default authSlice.reducer;
