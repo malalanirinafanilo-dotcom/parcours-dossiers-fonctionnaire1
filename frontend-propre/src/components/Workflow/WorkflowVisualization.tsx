@@ -1,3 +1,4 @@
+// src/components/Workflow/WorkflowVisualization.tsx
 import React from 'react';
 import { CheckCircle2, Circle, Clock } from 'lucide-react';
 
@@ -13,8 +14,8 @@ const WorkflowVisualization: React.FC<WorkflowVisualizationProps> = ({
   const steps = [
     { id: 'INTERESSE', label: 'Intéressé', description: 'Création et soumission', color: 'gray' },
     { id: 'DREN', label: 'DREN', description: 'Direction Régionale', color: 'blue' },
-    { id: 'MEN', label: 'MEN', description: 'Ministère', color: 'green' },
-    { id: 'FOP', label: 'FOP', description: 'Formation Professionnelle', color: 'yellow' },
+    { id: 'MEN', label: 'MEN', description: 'Ministère', color: 'primary' },
+    { id: 'FOP', label: 'FOP', description: 'Formation Professionnelle', color: 'amber' },
     { id: 'FINANCE', label: 'FINANCE', description: 'Direction Financière', color: 'purple' },
   ];
 
@@ -28,22 +29,22 @@ const WorkflowVisualization: React.FC<WorkflowVisualizationProps> = ({
   };
 
   const getStepColor = (status: string, color: string) => {
-    const colors = {
-      blue: 'bg-blue-500',
-      green: 'bg-green-500',
-      yellow: 'bg-yellow-500',
+    const colors: Record<string, string> = {
+      blue: 'bg-primary-500',
+      primary: 'bg-primary-600',
+      amber: 'bg-amber-500',
       purple: 'bg-purple-500',
-      gray: 'bg-gray-500'
+      gray: 'bg-dark-500'
     };
     
-    if (status === 'completed') return colors[color as keyof typeof colors];
-    if (status === 'current') return colors[color as keyof typeof colors];
-    return 'bg-gray-300';
+    if (status === 'completed') return colors[color] || 'bg-primary-500';
+    if (status === 'current') return colors[color] || 'bg-primary-600';
+    return 'bg-dark-300';
   };
 
   return (
     <div className="w-full">
-      {/* Version horizontale pour écran large */}
+      {/* Version horizontale */}
       <div className="hidden md:flex items-center justify-between mb-8">
         {steps.map((step, index) => {
           const status = getStepStatus(step.id);
@@ -53,36 +54,36 @@ const WorkflowVisualization: React.FC<WorkflowVisualizationProps> = ({
                 <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
                   status === 'completed' ? getStepColor(status, step.color) :
                   status === 'current' ? getStepColor(status, step.color) :
-                  'bg-gray-200'
+                  'bg-dark-200'
                 }`}>
                   {status === 'completed' ? (
                     <CheckCircle2 size={20} className="text-white" />
                   ) : status === 'current' ? (
                     <Clock size={20} className="text-white" />
                   ) : (
-                    <Circle size={20} className="text-gray-400" />
+                    <Circle size={20} className="text-dark-400" />
                   )}
                 </div>
                 <p className={`text-sm font-medium mt-2 ${
-                  status === 'completed' ? 'text-gray-900' :
-                  status === 'current' ? 'text-blue-600' :
-                  'text-gray-500'
+                  status === 'completed' ? 'text-dark-900 dark:text-dark-100' :
+                  status === 'current' ? 'text-primary-600' :
+                  'text-dark-500'
                 }`}>
                   {step.label}
                 </p>
-                <p className="text-xs text-gray-400 text-center mt-1">
+                <p className="text-xs text-dark-400 text-center mt-1">
                   {step.description}
                 </p>
               </div>
               {index < steps.length - 1 && (
-                <div className="flex-1 h-0.5 bg-gray-200 mx-2" />
+                <div className="flex-1 h-0.5 bg-dark-200 mx-2" />
               )}
             </React.Fragment>
           );
         })}
       </div>
 
-      {/* Version verticale pour mobile */}
+      {/* Version verticale */}
       <div className="md:hidden space-y-4">
         {steps.map((step, index) => {
           const status = getStepStatus(step.id);
@@ -91,25 +92,25 @@ const WorkflowVisualization: React.FC<WorkflowVisualizationProps> = ({
               <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
                 status === 'completed' ? getStepColor(status, step.color) :
                 status === 'current' ? getStepColor(status, step.color) :
-                'bg-gray-200'
+                'bg-dark-200'
               }`}>
                 {status === 'completed' ? (
                   <CheckCircle2 size={16} className="text-white" />
                 ) : status === 'current' ? (
                   <Clock size={16} className="text-white" />
                 ) : (
-                  <span className="text-xs text-gray-500">{index + 1}</span>
+                  <span className="text-xs text-dark-500">{index + 1}</span>
                 )}
               </div>
               <div className="flex-1">
                 <p className={`text-sm font-medium ${
-                  status === 'completed' ? 'text-gray-900' :
-                  status === 'current' ? 'text-blue-600' :
-                  'text-gray-500'
+                  status === 'completed' ? 'text-dark-900 dark:text-dark-100' :
+                  status === 'current' ? 'text-primary-600' :
+                  'text-dark-500'
                 }`}>
                   {step.label}
                 </p>
-                <p className="text-xs text-gray-400">{step.description}</p>
+                <p className="text-xs text-dark-400">{step.description}</p>
               </div>
             </div>
           );

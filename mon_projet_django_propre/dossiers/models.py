@@ -1,3 +1,4 @@
+# dossiers/models.py - VERSION CORRIGÉE
 from django.db import models
 from django.utils import timezone
 from django.core.exceptions import ValidationError
@@ -119,10 +120,66 @@ class Dossier(models.Model):
     def __str__(self):
         return f"{self.numero_dossier} - {self.titre}"
     
-    # ==================== MÉTHODES UTILITAIRES ====================
-    
     def get_etape_actuelle_display(self):
         return dict(self.ETAPES_WORKFLOW).get(self.etape_actuelle, self.etape_actuelle)
+    
+    # ==================== MÉTHODE CRITIQUE POUR LE FILTRAGE (CORRIGÉE) ====================
+    
+    def peut_voir(self, user):
+        """
+        Vérifie si un utilisateur peut voir ce dossier
+        Cette méthode est ESSENTIELLE pour le filtrage par rôle
+        """
+        if not user or not user.is_authenticated:
+            return False
+        
+        # ADMIN ou SUPERUSER voit TOUS les dossiers
+        if user.is_superuser:
+            return True
+        
+        role_code = user.role.code if user.role else 'UTILISATEUR'
+        
+        # ========== CAS INTÉRESSÉ (UTILISATEUR) ==========
+        if role_code == 'UTILISATEUR':
+            # L'intéressé voit:
+            # 1. Ses propres dossiers (créés par lui)
+            # 2. Les dossiers où il est le fonctionnaire
+            # 3. Les dossiers à l'étape INTERESSE (brouillons)
+            # 4. Les dossiers envoyés (DREN, MEN, FOP, FINANCE) ✅ AJOUT CRITIQUE
+            # 5. Les dossiers terminés
+            # 6. Les dossiers rejetés
+            return (
+                str(self.created_by_id) == str(user.id) or
+                (self.fonctionnaire and self.fonctionnaire.email == user.email) or
+                self.etape_actuelle == 'INTERESSE' or
+                self.etape_actuelle in ['DREN', 'MEN', 'FOP', 'FINANCE'] or  # ← AJOUT CRITIQUE
+                self.statut == 'TERMINE' or
+                self.motif_rejet is not None
+            )
+        
+        # ========== MAPPING RÔLE -> ÉTAPE POUR LES VALIDATEURS ==========
+        role_to_etape = {
+            'DREN': 'DREN',
+            'MEN': 'MEN',
+            'FOP': 'FOP',
+            'FINANCE': 'FINANCE',
+        }
+        
+        if role_code in role_to_etape:
+            etape_role = role_to_etape[role_code]
+            # Le validateur voit:
+            # 1. Les dossiers à son étape (à traiter)
+            # 2. Les dossiers qu'il a déjà validés
+            # 3. Les dossiers terminés
+            # 4. Les dossiers rejetés
+            return (
+                self.etape_actuelle == etape_role or
+                self.etapes_validation.get(etape_role) is not None or
+                self.statut == 'TERMINE' or
+                self.motif_rejet is not None
+            )
+        
+        return False
     
     # ==================== MÉTHODES DE VÉRIFICATION ====================
     
@@ -149,22 +206,6 @@ class Dossier(models.Model):
             return False
         
         return True
-    
-    def peut_voir(self, user):
-        """Vérifie si l'utilisateur peut voir ce dossier"""
-        if not user:
-            return False
-        if user.role and user.role.code == 'ADMIN':
-            return True
-        if self.created_by == user:
-            return True
-        if self.assigne_a == user:
-            return True
-        if user.role:
-            role_attendu = [r for r, e in self.ROLE_TO_ETAPE.items() if e == self.etape_actuelle]
-            if role_attendu and user.role.code in role_attendu:
-                return True
-        return False
     
     # ==================== MÉTHODES D'ACTION ====================
     
@@ -217,21 +258,14 @@ class Dossier(models.Model):
         
         return True
     
-    # ========== MÉTHODE CORRIGÉE ==========
     def valider_etape(self, user, commentaire=""):
-        """
-        Valide l'étape actuelle et passe à la suivante
-        Version corrigée avec logs détaillés et notification à l'intéressé
-        """
-        # Vérification des droits
+        """Valide l'étape actuelle et passe à la suivante"""
         if not self.peut_valider(user):
             raise ValidationError("Vous n'avez pas le droit de valider cette étape")
         
-        # Initialisation des étapes de validation
         if not self.etapes_validation:
             self.etapes_validation = {}
         
-        # Enregistrer la validation actuelle
         self.etapes_validation[self.etape_actuelle] = {
             'valide_par': user.email,
             'nom_utilisateur': f"{user.first_name} {user.last_name}",
@@ -240,59 +274,41 @@ class Dossier(models.Model):
             'commentaire': commentaire
         }
         
-        # Déterminer la prochaine étape
         role_code = user.role.code if user.role else None
         prochaine_etape = self.VALIDATION_TO_NEXT_ETAPE.get(role_code)
         
         if not prochaine_etape:
             raise ValidationError(f"Impossible de déterminer la prochaine étape")
         
-        # Sauvegarder l'état avant modification
         ancien_statut = self.statut
         ancienne_etape = self.etape_actuelle
         
-        # ===== LOGS DÉTAILLÉS POUR DÉBOGAGE =====
         print("\n" + "="*80)
         print("🔍 VALIDATION D'ÉTAPE - DÉTAILS")
         print("="*80)
         print(f"📁 Dossier: {self.numero_dossier}")
-        print(f"   ID: {self.id}")
-        print(f"   Titre: {self.titre}")
         print(f"👤 Validateur: {user.email}")
-        print(f"   Rôle: {role_code}")
-        print(f"   Nom: {user.first_name} {user.last_name}")
-        print(f"📍 État avant validation:")
-        print(f"   - Étape actuelle: {ancienne_etape}")
-        print(f"   - Statut actuel: {ancien_statut}")
-        print(f"   - Prochaine étape: {prochaine_etape}")
+        print(f"📍 État avant: {ancienne_etape} -> {ancien_statut}")
+        print(f"📍 Prochaine étape: {prochaine_etape}")
         
-        # Gestion des différents cas
         if prochaine_etape == 'TERMINE':
             self.statut = 'TERMINE'
             self.etape_actuelle = 'TERMINE'
             self.date_cloture = timezone.now()
-            print(f"\n✅ CAS: Dossier TERMINÉ avec succès !")
+            print(f"✅ Dossier TERMINÉ")
         else:
             self.etape_actuelle = prochaine_etape
-            # Mettre à jour le statut en fonction de la nouvelle étape
             nouveau_statut = self.ETAPE_TO_STATUT.get(prochaine_etape)
             if nouveau_statut:
                 self.statut = nouveau_statut
             else:
                 self.statut = 'EN_COURS'
-            print(f"\n✅ CAS: Passage à l'étape suivante")
+            print(f"✅ Passage à: {self.etape_actuelle} -> {self.statut}")
         
-        print(f"📍 État après validation:")
-        print(f"   - Nouvelle étape: {self.etape_actuelle}")
-        print(f"   - Nouveau statut: {self.statut}")
-        
-        # Sauvegarder les modifications
         self.save()
-        print(f"✅ Dossier sauvegardé avec succès")
         
-        # Créer l'historique
         from .models import HistoriqueAction
-        historique = HistoriqueAction.objects.create(
+        HistoriqueAction.objects.create(
             dossier=self,
             user=user,
             action='VALIDATION',
@@ -307,28 +323,14 @@ class Dossier(models.Model):
                 'valide_par': user.email
             }
         )
-        print(f"✅ Historique créé: {historique.id}")
         
-        # ===== NOTIFICATION À L'INTÉRESSÉ =====
+        # Notification à l'intéressé
         if self.created_by and self.created_by != user:
             try:
-                from core.notification_service import NotificationService
                 NotificationService.notifier_validation_dossier(self, user)
                 print(f"✅ Notification envoyée à l'intéressé: {self.created_by.email}")
             except Exception as e:
-                print(f"⚠️ Erreur notification intéressé: {e}")
-        
-        # ===== NOTIFICATION AU PROCHAIN VALIDATEUR =====
-        prochain_role = self.get_prochain_role()
-        if prochain_role:
-            try:
-                prochain_user = User.objects.filter(role__code=prochain_role).first()
-                if prochain_user:
-                    from core.notification_service import NotificationService
-                    NotificationService.notifier_transfert_dossier(self, user, prochain_user)
-                    print(f"✅ Notification envoyée au prochain validateur: {prochain_role}")
-            except Exception as e:
-                print(f"⚠️ Erreur notification prochain validateur: {e}")
+                print(f"⚠️ Erreur notification: {e}")
         
         print("="*80 + "\n")
         
@@ -347,18 +349,12 @@ class Dossier(models.Model):
         
         print(f"\n❌ REJET du dossier {self.numero_dossier}")
         print(f"   - Par: {user.email}")
-        print(f"   - Ancien statut: {ancien_statut}")
-        print(f"   - Ancienne étape: {ancienne_etape}")
         print(f"   - Motif: {motif}")
         
         self.statut = 'BROUILLON'
         self.etape_actuelle = 'INTERESSE'
         self.motif_rejet = motif
         self.save()
-        
-        print(f"   ✅ Nouveau statut: {self.statut}")
-        print(f"   ✅ Nouvelle étape: {self.etape_actuelle}")
-        print(f"   ✅ Motif enregistré: {self.motif_rejet}")
         
         from .models import HistoriqueAction
         HistoriqueAction.objects.create(
@@ -384,8 +380,6 @@ class Dossier(models.Model):
                 print(f"   ⚠️ Erreur notification: {e}")
         
         return True
-    
-    # ==================== MÉTHODES DE WORKFLOW ====================
     
     def get_prochaine_etape(self):
         """Détermine la prochaine étape dans le workflow"""
@@ -465,21 +459,18 @@ class Document(models.Model):
     
     @property
     def url(self):
-        """Retourne l'URL complète du fichier"""
         if self.fichier:
             return self.fichier.url
         return None
     
     @property
     def taille(self):
-        """Retourne la taille du fichier en bytes"""
         if self.fichier and self.fichier.size:
             return self.fichier.size
         return 0
 
 
 class HistoriqueAction(models.Model):
-    """Historique des actions sur un dossier"""
     ACTION_CHOICES = [
         ('CREATION', 'Création'),
         ('VALIDATION', 'Validation'),
@@ -504,7 +495,6 @@ class HistoriqueAction(models.Model):
 
 
 class IAAnalyse(models.Model):
-    """Analyse IA d'un dossier"""
     TYPE_ANALYSE_CHOICES = [
         ('RULE_BASED', 'Basé sur règles'),
         ('ML', 'Machine Learning'),

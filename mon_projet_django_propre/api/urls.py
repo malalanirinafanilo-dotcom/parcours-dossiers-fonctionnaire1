@@ -11,7 +11,9 @@ from .views import (
     # Profil utilisateur
     UserProfileViewSet,
     # Vues admin
-    AdminUserViewSet, AdminDashboardViewSet, AdminLogViewSet, AdminSettingViewSet
+    AdminUserViewSet, AdminDashboardViewSet, AdminLogViewSet, AdminSettingViewSet,
+    # ✅ Paramètres (admin uniquement)
+    ParametresViewSet,
 )
 
 # ==================== ROUTER PRINCIPAL ====================
@@ -36,6 +38,9 @@ router.register(r'admin/users', AdminUserViewSet, basename='admin-users')
 router.register(r'admin/dashboard', AdminDashboardViewSet, basename='admin-dashboard')
 router.register(r'admin/logs', AdminLogViewSet, basename='admin-logs')
 router.register(r'admin/settings', AdminSettingViewSet, basename='admin-settings')
+
+# ==================== ✅ ROUTES PARAMÈTRES (ADMIN UNIQUEMENT) ====================
+router.register(r'parametres', ParametresViewSet, basename='parametres')
 
 # ==================== URLS ====================
 urlpatterns = [

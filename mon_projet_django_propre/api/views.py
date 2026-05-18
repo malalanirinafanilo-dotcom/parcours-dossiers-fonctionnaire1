@@ -1,4 +1,4 @@
-# api/views.py - VERSION COMPLÈTE ET CORRIGÉE
+# api/views.py - VERSION COMPLÈTE CORRIGÉE
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
@@ -20,10 +20,9 @@ from .serializers import (
     HistoriqueActionSerializer, IAAnalyseSerializer,
     ValidationActionSerializer, RejetActionSerializer,
     NotificationSerializer,
-    # Nouveaux sérializers admin
     UserCreateUpdateSerializer, AdminActionLogSerializer, SystemSettingSerializer
 )
-from .permissions import IsSuperUser
+from .permissions import IsSuperUser, IsAdminUser
 import logging
 import traceback
 import uuid
@@ -32,7 +31,7 @@ import os
 logger = logging.getLogger(__name__)
 
 
-# ==================== VUE DE DÉBOGAGE MÉDIA ====================
+# ==================== VUE DE DÉBOGAGE ====================
 
 @api_view(['GET'])
 @permission_classes([AllowAny])
@@ -67,7 +66,6 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     def validate(self, attrs):
         data = super().validate(attrs)
         
-        # Récupérer le rôle de l'utilisateur
         user_role = None
         if hasattr(self.user, 'role') and self.user.role:
             user_role = {
@@ -76,7 +74,6 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
                 'name': self.user.role.name
             }
         
-        # Ajouter les infos utilisateur dans la réponse
         data['user'] = {
             'id': str(self.user.id),
             'email': self.user.email,
@@ -98,7 +95,7 @@ class CustomTokenObtainPairView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer
 
 
-# ==================== VIEWSETS PRINCIPAUX (EXISTANTS) ====================
+# ==================== VIEWSETS PRINCIPAUX ====================
 
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
@@ -145,7 +142,12 @@ class WorkflowViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
 
+# ==================== DOSSIER VIEWSET AVEC FILTRAGE PAR RÔLE ====================
+
 class DossierViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet pour les dossiers avec filtrage automatique selon le rôle
+    """
     queryset = Dossier.objects.all().select_related(
         'fonctionnaire', 'workflow', 'assigne_a', 'created_by'
     ).prefetch_related(
@@ -159,42 +161,39 @@ class DossierViewSet(viewsets.ModelViewSet):
         return DossierSerializer
     
     def get_queryset(self):
-        queryset = super().get_queryset()
+        """
+        FILTRAGE CRITIQUE : Filtre les dossiers selon le rôle de l'utilisateur
+        Utilise la méthode peut_voir du modèle Dossier
+        """
         user = self.request.user
+        queryset = super().get_queryset()
         
-        if not user or not user.role:
+        if not user or not user.is_authenticated:
             return queryset.none()
         
-        role_code = user.role.code
-        
-        if role_code == 'ADMIN' or user.is_superuser:
+        # Superuser voit TOUS les dossiers
+        if user.is_superuser:
+            print(f"👑 SUPERUSER {user.email} - voit tous les dossiers")
             return queryset
         
-        if role_code == 'UTILISATEUR':
-            return queryset.filter(
-                Q(created_by=user) |
-                Q(fonctionnaire__email=user.email) |
-                Q(etape_actuelle='INTERESSE')
-            )
+        # Filtrage selon le rôle avec la méthode peut_voir
+        role_code = user.role.code if user.role else 'UTILISATEUR'
+        print(f"🔍 FILTRAGE pour {user.email} (rôle: {role_code})")
         
-        role_to_etape = {
-            'DREN': 'DREN',
-            'MEN': 'MEN',
-            'FOP': 'FOP',
-            'FINANCE': 'FINANCE',
-        }
+        # Utiliser la méthode peut_voir pour chaque dossier
+        filtered_ids = []
+        for dossier in queryset:
+            if dossier.peut_voir(user):
+                filtered_ids.append(dossier.id)
         
-        etape_role = role_to_etape.get(role_code)
+        result = queryset.filter(id__in=filtered_ids)
         
-        if etape_role:
-            a_traiter = Q(etape_actuelle=etape_role) & Q(statut=f'EN_ATTENTE_{etape_role}')
-            deja_valides = Q(**{f'etapes_validation__{etape_role}__isnull': False})
-            termines = Q(statut='TERMINE')
-            rejetes = Q(motif_rejet__isnull=False)
-            
-            queryset = queryset.filter(a_traiter | deja_valides | termines | rejetes)
+        # Log du résultat
+        print(f"   📊 Résultat: {result.count()} dossiers sur {queryset.count()} total")
+        print(f"   📊 Détail: Terminés={result.filter(statut='TERMINE').count()}, "
+              f"À traiter={result.filter(etape_actuelle=role_code if role_code in ['DREN','MEN','FOP','FINANCE'] else '').count()}")
         
-        return queryset.distinct()
+        return result
     
     def perform_create(self, serializer):
         numero = f"DOS-{timezone.now().strftime('%Y%m')}-{str(uuid.uuid4())[:8].upper()}"
@@ -443,7 +442,6 @@ class NotificationViewSet(viewsets.ModelViewSet):
 # ==================== PROFIL UTILISATEUR ====================
 
 class UserProfileViewSet(viewsets.ReadOnlyModelViewSet):
-    """Profil utilisateur - accessible par l'utilisateur lui-même"""
     serializer_class = UserSerializer
     permission_classes = [permissions.IsAuthenticated]
     
@@ -467,7 +465,6 @@ class UserProfileViewSet(viewsets.ReadOnlyModelViewSet):
 # ==================== VUES ADMIN (SUPERUSER) ====================
 
 class AdminUserViewSet(viewsets.ModelViewSet):
-    """Gestion des utilisateurs par le superuser"""
     permission_classes = [permissions.IsAuthenticated, IsSuperUser]
     queryset = User.objects.all().order_by('-created_at')
     
@@ -548,7 +545,6 @@ class AdminUserViewSet(viewsets.ModelViewSet):
     
     @action(detail=False, methods=['get'])
     def stats(self, request):
-        """Statistiques des utilisateurs"""
         total_users = User.objects.count()
         superusers = User.objects.filter(is_superuser=True).count()
         blocked_users = User.objects.filter(is_blocked=True).count()
@@ -577,12 +573,10 @@ class AdminUserViewSet(viewsets.ModelViewSet):
 
 
 class AdminDashboardViewSet(viewsets.ViewSet):
-    """Dashboard superuser"""
     permission_classes = [permissions.IsAuthenticated, IsSuperUser]
     
     @action(detail=False, methods=['get'])
     def stats(self, request):
-        """Statistiques globales"""
         now = timezone.now()
         today = now.date()
         
@@ -595,7 +589,6 @@ class AdminDashboardViewSet(viewsets.ViewSet):
     
     @action(detail=False, methods=['get'])
     def recent_activity(self, request):
-        """Activité récente"""
         recent_logs = AdminActionLog.objects.all().select_related('admin', 'target_user')[:20]
         recent_users = User.objects.all().order_by('-created_at')[:10]
         
@@ -609,7 +602,6 @@ class AdminDashboardViewSet(viewsets.ViewSet):
 
 
 class AdminLogViewSet(viewsets.ReadOnlyModelViewSet):
-    """Consultation des logs admin"""
     permission_classes = [permissions.IsAuthenticated, IsSuperUser]
     queryset = AdminActionLog.objects.all().select_related('admin', 'target_user')
     serializer_class = AdminActionLogSerializer
@@ -622,7 +614,6 @@ class AdminLogViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 class AdminSettingViewSet(viewsets.ModelViewSet):
-    """Gestion des paramètres système"""
     permission_classes = [permissions.IsAuthenticated, IsSuperUser]
     queryset = SystemSetting.objects.all()
     serializer_class = SystemSettingSerializer
@@ -641,6 +632,32 @@ class AdminSettingViewSet(viewsets.ModelViewSet):
             return Response({'value': setting.value})
         except SystemSetting.DoesNotExist:
             return Response({'value': None})
+
+
+class ParametresViewSet(viewsets.ModelViewSet):
+    """ViewSet pour la gestion des paramètres système. Accessible UNIQUEMENT aux administrateurs."""
+    queryset = SystemSetting.objects.all()
+    serializer_class = SystemSettingSerializer
+    permission_classes = [IsAdminUser]
+    
+    @action(detail=False, methods=['get'])
+    def public(self, request):
+        public_keys = ['app_name', 'language', 'timezone']
+        settings = SystemSetting.objects.filter(key__in=public_keys)
+        serializer = self.get_serializer(settings, many=True)
+        return Response(serializer.data)
+    
+    @action(detail=False, methods=['get'])
+    def stats(self, request):
+        total = SystemSetting.objects.count()
+        return Response({
+            'total_settings': total,
+            'categories': {
+                'email': SystemSetting.objects.filter(key__startswith='email_').count(),
+                'security': SystemSetting.objects.filter(key__startswith='security_').count(),
+                'app': SystemSetting.objects.filter(key__startswith='app_').count(),
+            }
+        })
 
 
 # ==================== ENDPOINTS POUR CRÉER LES COMPTES ====================

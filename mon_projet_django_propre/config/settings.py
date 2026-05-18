@@ -316,3 +316,11 @@ if not DEBUG:
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
     SECURE_SSL_REDIRECT = True
+# ==================== EMAIL CONFIGURATION ====================
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'malalanirinafanilodariah@gmail.com'
+EMAIL_HOST_PASSWORD = 'abcd efgh ijkl mnop'  # Remplacez par votre mot de passe à 16 caractères (sans espaces)
+DEFAULT_FROM_EMAIL = 'malalanirinafanilodariah@gmail.com'

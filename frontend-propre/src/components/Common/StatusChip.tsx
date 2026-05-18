@@ -1,13 +1,6 @@
+// src/components/Common/StatusChip.tsx
 import React from 'react';
-import { 
-  CheckCircle, 
-  Clock, 
-  AlertTriangle, 
-  XCircle, 
-  FileText,
-  Send,
-  Check
-} from 'lucide-react';
+import { CheckCircle, Clock, AlertTriangle, XCircle, FileText, Send } from 'lucide-react';
 
 interface StatusChipProps {
   status: string;
@@ -19,75 +12,74 @@ const StatusChip: React.FC<StatusChipProps> = ({ status, size = 'md', showIcon =
   const getStatusConfig = (status: string) => {
     const configs: Record<string, { color: string; label: string; icon: any }> = {
       TERMINE: { 
-        color: 'bg-green-100 text-green-700 border-green-200', 
+        color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400', 
         label: 'Terminé', 
         icon: CheckCircle 
       },
       EN_COURS: { 
-        color: 'bg-green-100 text-green-700 border-green-200', 
+        color: 'bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400', 
         label: 'En cours', 
         icon: Clock 
       },
-      EN_ATTENTE: { 
-        color: 'bg-green-100 text-green-700 border-green-200', 
-        label: 'En attente', 
-        icon: Clock 
-      },
       EN_ATTENTE_DREN: { 
-        color: 'bg-green-100 text-green-700 border-green-200', 
-        label: 'En attente DREN', 
+        color: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400', 
+        label: 'Attente DREN', 
         icon: Send 
       },
       EN_ATTENTE_MEN: { 
-        color: 'bg-green-100 text-green-700 border-green-200', 
-        label: 'En attente MEN', 
+        color: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400', 
+        label: 'Attente MEN', 
         icon: Send 
       },
       EN_ATTENTE_FOP: { 
-        color: 'bg-green-100 text-green-700 border-green-200', 
-        label: 'En attente FOP', 
+        color: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400', 
+        label: 'Attente FOP', 
         icon: Send 
       },
       EN_ATTENTE_FINANCE: { 
-        color: 'bg-green-100 text-green-700 border-green-200', 
-        label: 'En attente Finance', 
+        color: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400', 
+        label: 'Attente Finance', 
         icon: Send 
       },
       BLOQUE: { 
-        color: 'bg-error-100 text-error-700 border-error-200', 
+        color: 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400', 
         label: 'Bloqué', 
         icon: AlertTriangle 
       },
       REJETE: { 
-        color: 'bg-error-100 text-error-700 border-error-200', 
+        color: 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400', 
         label: 'Rejeté', 
         icon: XCircle 
       },
       BROUILLON: { 
-        color: 'bg-warning-100 text-warning-700 border-warning-200', 
+        color: 'bg-dark-100 text-dark-700 dark:bg-dark-800 dark:text-dark-400', 
         label: 'Brouillon', 
         icon: FileText 
       },
     };
 
     const config = configs[status] || { 
-      color: 'bg-green-100 text-green-700 border-green-200', 
+      color: 'bg-dark-100 text-dark-700 dark:bg-dark-800 dark:text-dark-400', 
       label: status,
-      icon: Check 
+      icon: Clock 
     };
 
     const Icon = config.icon;
     const sizeClasses = {
       sm: 'px-2 py-0.5 text-xs gap-1',
-      md: 'px-3 py-1.5 text-sm gap-1.5',
-      lg: 'px-4 py-2 text-base gap-2',
+      md: 'px-2.5 py-1 text-sm gap-1.5',
+      lg: 'px-3 py-1.5 text-base gap-2',
+    };
+
+    const iconSizes = {
+      sm: 12,
+      md: 14,
+      lg: 16,
     };
 
     return (
-      <span className={`inline-flex items-center rounded-full border ${config.color} 
-                      ${sizeClasses[size]} font-medium transition-all duration-200
-                      hover:shadow-md hover:scale-105`}>
-        {showIcon && <Icon size={size === 'sm' ? 12 : size === 'md' ? 14 : 16} />}
+      <span className={`inline-flex items-center rounded-full ${config.color} ${sizeClasses[size]} font-medium`}>
+        {showIcon && <Icon size={iconSizes[size]} />}
         {config.label}
       </span>
     );

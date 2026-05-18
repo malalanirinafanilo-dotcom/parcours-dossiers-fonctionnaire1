@@ -1,5 +1,6 @@
+// src/services/dossierService.ts - VERSION CORRIGÉE (gestion matricule dupliqué)
 import api from './api';
-import { Dossier, DossierDetail, Document, Statistiques, StatistiquesCompte } from '../types';
+import { Dossier, DossierDetail, Document } from '../types';
 import toast from 'react-hot-toast';
 
 class DossierService {
@@ -62,6 +63,16 @@ class DossierService {
   }
 
   /**
+   * Génère un matricule unique
+   */
+  private genererMatriculeUnique(): string {
+    const date = new Date();
+    const timestamp = date.getTime();
+    const random = Math.random().toString(36).substring(2, 10).toUpperCase();
+    return `MAT-${timestamp}-${random}`;
+  }
+
+  /**
    * Transforme un dossier brut du backend en objet Dossier utilisable par le frontend
    */
   private transformDossier(dossier: any): Dossier {
@@ -78,11 +89,15 @@ class DossierService {
       fonctionnaire_matricule = this.nettoyerTexte(dossier.fonctionnaire.matricule || '');
     }
     
+    // Fallback si le fonctionnaire n'est pas chargé
     if (!fonctionnaire_nom) {
       fonctionnaire_nom = this.nettoyerTexte(dossier.fonctionnaire_nom || 'Non spécifié');
     }
     if (!fonctionnaire_prenom) {
       fonctionnaire_prenom = this.nettoyerTexte(dossier.fonctionnaire_prenom || '');
+    }
+    if (!fonctionnaire_matricule) {
+      fonctionnaire_matricule = this.nettoyerTexte(dossier.fonctionnaire_matricule || '');
     }
     
     // Transformer les documents
@@ -92,7 +107,7 @@ class DossierService {
         id: doc.id,
         nom: doc.nom,
         type_document: doc.type_document,
-        url: doc.url || (doc.fichier ? `/media/${doc.fichier}` : null),
+        url: doc.url || (doc.fichier ? `${api.defaults.baseURL?.replace('/api', '') || 'http://localhost:8000'}${doc.fichier}` : null),
         fichier: doc.fichier,
         taille: doc.taille || 0,
         created_at: doc.created_at,
@@ -114,6 +129,7 @@ class DossierService {
       fonctionnaire_prenom: fonctionnaire_prenom,
       fonctionnaire_matricule: fonctionnaire_matricule,
       fonctionnaire: fonctionnaire_complet,
+      fonctionnaire_email: dossier.fonctionnaire?.email || dossier.fonctionnaire_email || '',
       motif_rejet: dossier.motif_rejet ? this.nettoyerTexte(dossier.motif_rejet) : null,
       date_depot: dossier.date_depot || new Date().toISOString(),
       date_limite: dossier.date_limite || null,
@@ -146,100 +162,21 @@ class DossierService {
 
   /**
    * Récupère tous les dossiers pour un utilisateur
-   * VERSION CORRIGÉE - L'intéressé voit TOUS ses dossiers (y compris terminés)
    */
   async getDossiersForUser(userEmail: string, userRole: string): Promise<Dossier[]> {
     try {
       console.log('='.repeat(60));
       console.log('🔍 Récupération des dossiers pour:', { userEmail, userRole });
       
-      const params: any = {};
-      
-      const response = await api.get('/dossiers/', { params });
-      
+      const response = await api.get('/dossiers/');
       const dossiersBruts = response.data.results || response.data;
       console.log(`📥 ${dossiersBruts.length} dossiers bruts reçus`);
       
+      // Le backend filtre déjà selon le rôle, pas besoin de refiltrer ici
       let dossiersTransformes = this.transformDossiers(dossiersBruts);
       
-      // ========== FILTRAGE CORRIGÉ POUR L'INTÉRESSÉ ==========
-      if (userRole === 'UTILISATEUR' || userEmail.includes('interesse')) {
-        // L'intéressé doit voir :
-        // 1. Les dossiers qu'il a créés (created_by = lui-même)
-        // 2. Les dossiers où il est le fonctionnaire concerné
-        // 3. Les dossiers à l'étape INTERESSE (brouillons ou rejetés)
-        // 4. Les dossiers terminés (TERMINE) - C'EST CE QUI ÉTAIT MANQUANT !
-        // 5. Les dossiers rejetés
-        
-        dossiersTransformes = dossiersTransformes.filter((d: Dossier) => {
-          const estCreateur = d.created_by?.email === userEmail;
-          const estFonctionnaire = d.fonctionnaire_nom?.toLowerCase().includes('rakoto') || 
-                                   d.fonctionnaire_prenom?.toLowerCase().includes('jean');
-          const estSonEtape = d.etape_actuelle === 'INTERESSE';
-          const estRejete = d.motif_rejet !== null && d.motif_rejet !== '';
-          const estTermine = d.statut === 'TERMINE';  // ✅ AJOUT CRITIQUE
-          
-          const result = estCreateur || estFonctionnaire || estSonEtape || estRejete || estTermine;
-          
-          if (result && estTermine) {
-            console.log(`✅ Dossier terminé trouvé pour intéressé: ${d.numero_dossier}`);
-          }
-          
-          return result;
-        });
-        
-        console.log(`👤 ${dossiersTransformes.length} dossiers pour intéressé après filtrage`);
-        console.log('   Dont terminés:', dossiersTransformes.filter(d => d.statut === 'TERMINE').length);
-      }
-      
-      // ========== FILTRAGE POUR DREN ==========
-      else if (userRole === 'DREN' || userEmail.includes('dren')) {
-        dossiersTransformes = dossiersTransformes.filter((d: Dossier) => 
-          d.etape_actuelle === 'DREN' ||
-          d.etapes_validation?.DREN ||
-          d.statut === 'TERMINE' ||  // ✅ VOIR LES TERMINÉS AUSSI
-          d.motif_rejet
-        );
-        console.log(`🏛️ ${dossiersTransformes.length} dossiers pour DREN`);
-      }
-      
-      // ========== FILTRAGE POUR MEN ==========
-      else if (userRole === 'MEN' || userEmail.includes('men')) {
-        dossiersTransformes = dossiersTransformes.filter((d: Dossier) => 
-          d.etape_actuelle === 'MEN' ||
-          d.etapes_validation?.MEN ||
-          d.statut === 'TERMINE' ||  // ✅ VOIR LES TERMINÉS AUSSI
-          d.motif_rejet
-        );
-        console.log(`📚 ${dossiersTransformes.length} dossiers pour MEN`);
-      }
-      
-      // ========== FILTRAGE POUR FOP ==========
-      else if (userRole === 'FOP' || userEmail.includes('fop')) {
-        dossiersTransformes = dossiersTransformes.filter((d: Dossier) => 
-          d.etape_actuelle === 'FOP' ||
-          d.etapes_validation?.FOP ||
-          d.statut === 'TERMINE' ||  // ✅ VOIR LES TERMINÉS AUSSI
-          d.motif_rejet
-        );
-        console.log(`🛠️ ${dossiersTransformes.length} dossiers pour FOP`);
-      }
-      
-      // ========== FILTRAGE POUR FINANCE ==========
-      else if (userRole === 'FINANCE' || userEmail.includes('finance')) {
-        dossiersTransformes = dossiersTransformes.filter((d: Dossier) => 
-          d.etape_actuelle === 'FINANCE' ||
-          d.etapes_validation?.FINANCE ||
-          d.statut === 'TERMINE' ||  // ✅ VOIR LES TERMINÉS AUSSI
-          d.motif_rejet
-        );
-        console.log(`💰 ${dossiersTransformes.length} dossiers pour FINANCE`);
-      }
-      
-      // ========== FILTRAGE POUR ADMIN ==========
-      else if (userRole === 'ADMIN' || userEmail.includes('admin')) {
-        console.log(`👑 ${dossiersTransformes.length} dossiers pour ADMIN`);
-      }
+      console.log(`📊 ${dossiersTransformes.length} dossiers après transformation`);
+      console.log('   Dont terminés:', dossiersTransformes.filter(d => d.statut === 'TERMINE').length);
       
       return dossiersTransformes;
       
@@ -259,17 +196,21 @@ class DossierService {
       return this.transformDossier(response.data) as DossierDetail;
     } catch (error: any) {
       console.error('❌ Erreur chargement dossier:', error);
+      if (error.response?.status === 404) {
+        toast.error('Dossier non trouvé');
+      }
       return null;
     }
   }
 
   /**
-   * Crée un nouveau dossier
+   * Crée un nouveau dossier - VERSION CORRIGÉE (gestion matricule dupliqué)
    */
   async createDossier(dossierData: any, userEmail: string, files?: File[]): Promise<Dossier | null> {
     try {
       console.log('📝 Création dossier avec données:', dossierData);
       
+      // Validation des champs obligatoires
       if (!dossierData.fonctionnaire_nom || !dossierData.fonctionnaire_prenom) {
         toast.error('Le nom et prénom du fonctionnaire sont obligatoires');
         return null;
@@ -277,42 +218,84 @@ class DossierService {
       
       let fonctionnaireId = null;
       
+      // ========== 1. RECHERCHER UN FONCTIONNAIRE EXISTANT ==========
       try {
+        // Rechercher par nom et prénom d'abord
         const searchResponse = await api.get('/fonctionnaires/', {
           params: { 
-            search: `${dossierData.fonctionnaire_nom} ${dossierData.fonctionnaire_prenom}` 
+            search: `${dossierData.fonctionnaire_nom} ${dossierData.fonctionnaire_prenom}`
           }
         });
         
         const existingFonctionnaires = searchResponse.data.results || searchResponse.data;
         
         if (existingFonctionnaires && existingFonctionnaires.length > 0) {
-          fonctionnaireId = existingFonctionnaires[0].id;
-          console.log('✅ Fonctionnaire existant trouvé:', fonctionnaireId);
-        } else {
-          console.log('➕ Création d\'un nouveau fonctionnaire');
+          // Vérifier si le fonctionnaire correspond exactement
+          const matchingFonctionnaire = existingFonctionnaires.find((f: any) => 
+            f.nom?.toLowerCase() === dossierData.fonctionnaire_nom?.toLowerCase() &&
+            f.prenom?.toLowerCase() === dossierData.fonctionnaire_prenom?.toLowerCase()
+          );
           
-          const newFonctionnaire = {
-            matricule: dossierData.fonctionnaire_matricule || `TEMP-${Date.now()}`,
-            nom: dossierData.fonctionnaire_nom,
-            prenom: dossierData.fonctionnaire_prenom,
-            date_naissance: dossierData.date_naissance || '1970-01-01',
-            email: userEmail,
-            telephone: dossierData.telephone || '',
-            adresse: dossierData.adresse || '',
-            categorie: dossierData.categorie || 'A',
-            grade: dossierData.grade || 'A1'
-          };
-          
-          console.log('📤 Création fonctionnaire:', newFonctionnaire);
-          const fResponse = await api.post('/fonctionnaires/', newFonctionnaire);
-          fonctionnaireId = fResponse.data.id;
-          console.log('✅ Nouveau fonctionnaire créé avec ID:', fonctionnaireId);
+          if (matchingFonctionnaire) {
+            fonctionnaireId = matchingFonctionnaire.id;
+            console.log('✅ Fonctionnaire existant trouvé:', fonctionnaireId);
+            console.log('   Matricule existant:', matchingFonctionnaire.matricule);
+          }
         }
-      } catch (error: any) {
-        console.error('❌ Erreur lors de la création du fonctionnaire:', error);
-        toast.error('Erreur lors de la création du fonctionnaire');
-        return null;
+      } catch (error) {
+        console.log('Recherche fonctionnaire existant:', error);
+      }
+      
+      // ========== 2. CRÉER UN NOUVEAU FONCTIONNAIRE SI NON TROUVÉ ==========
+      if (!fonctionnaireId) {
+        console.log('➕ Création d\'un nouveau fonctionnaire');
+        
+        let fonctionnaireCree = false;
+        let tentatives = 0;
+        const maxTentatives = 5;
+        
+        while (!fonctionnaireCree && tentatives < maxTentatives) {
+          try {
+            const matricule = this.genererMatriculeUnique();
+            
+            const newFonctionnaire = {
+              matricule: matricule,
+              nom: dossierData.fonctionnaire_nom,
+              prenom: dossierData.fonctionnaire_prenom,
+              date_naissance: dossierData.date_naissance || '1970-01-01',
+              email: dossierData.fonctionnaire_email || userEmail,
+              telephone: dossierData.telephone || '',
+              adresse: dossierData.adresse || '',
+              categorie: dossierData.categorie || 'A',
+              grade: dossierData.grade || 'A1'
+            };
+            
+            console.log(`📤 Tentative ${tentatives + 1}: Création fonctionnaire avec matricule: ${matricule}`);
+            const fResponse = await api.post('/fonctionnaires/', newFonctionnaire);
+            fonctionnaireId = fResponse.data.id;
+            fonctionnaireCree = true;
+            console.log('✅ Nouveau fonctionnaire créé avec ID:', fonctionnaireId);
+            
+          } catch (error: any) {
+            tentatives++;
+            console.error(`❌ Tentative ${tentatives} échouée:`, error.response?.data || error.message);
+            
+            // Vérifier si l'erreur est due à un matricule dupliqué
+            const isDuplicateError = 
+              error.response?.data?.matricule ||
+              (error.response?.data && JSON.stringify(error.response.data).toLowerCase().includes('matricule')) ||
+              (error.response?.data && JSON.stringify(error.response.data).toLowerCase().includes('unique'));
+            
+            if (isDuplicateError && tentatives < maxTentatives) {
+              console.log(`⚠️ Matricule dupliqué, nouvelle tentative ${tentatives + 1}/${maxTentatives}`);
+              continue;
+            } else if (tentatives >= maxTentatives) {
+              throw new Error('Impossible de créer un matricule unique après plusieurs tentatives');
+            } else {
+              throw error;
+            }
+          }
+        }
       }
       
       if (!fonctionnaireId) {
@@ -320,13 +303,17 @@ class DossierService {
         return null;
       }
       
+      // ========== 3. CRÉER LE DOSSIER ==========
       const dataToSend: any = {
         fonctionnaire: fonctionnaireId,
         titre: dossierData.titre || 'Nouveau dossier',
         type_dossier: dossierData.type_dossier || 'PROMOTION',
         code_mouvement: dossierData.code_mouvement || '02',
-        description: dossierData.description || '',
       };
+      
+      if (dossierData.description) {
+        dataToSend.description = dossierData.description;
+      }
       
       if (dossierData.donnees_specifiques) {
         dataToSend.donnees_specifiques = dossierData.donnees_specifiques;
@@ -334,46 +321,49 @@ class DossierService {
       
       console.log('📤 Envoi des données au serveur:', dataToSend);
       
-      const response = await api.post('/dossiers/', dataToSend);
-      console.log('✅ Réponse du serveur:', response.data);
+      let response;
+      try {
+        response = await api.post('/dossiers/', dataToSend);
+        console.log('✅ Réponse du serveur:', response.data);
+      } catch (error: any) {
+        console.error('❌ Erreur création dossier:', error);
+        
+        if (error.response?.data) {
+          const errorData = error.response.data;
+          if (typeof errorData === 'object') {
+            Object.entries(errorData).forEach(([field, errors]) => {
+              const errorMsg = Array.isArray(errors) ? errors.join(', ') : errors;
+              toast.error(`${field}: ${errorMsg}`);
+            });
+          } else {
+            toast.error(errorData.detail || 'Erreur lors de la création du dossier');
+          }
+        } else if (error.request) {
+          toast.error('Le serveur ne répond pas. Vérifiez que le backend est démarré.');
+        } else {
+          toast.error(error.message || 'Erreur de communication');
+        }
+        return null;
+      }
       
       toast.success('✅ Dossier créé avec succès !');
       
+      // ========== 4. UPLOADER LES DOCUMENTS ==========
       if (files && files.length > 0 && response.data.id) {
-        console.log('📎 Upload de', files.length, 'fichiers...');
-        await this.uploadMultipleDocuments(response.data.id, files);
+        console.log(`📎 Upload de ${files.length} fichier(s)...`);
+        const uploadSuccess = await this.uploadMultipleDocuments(response.data.id, files);
+        if (uploadSuccess) {
+          toast.success(`${files.length} fichier(s) uploadé(s) avec succès`);
+        } else {
+          toast.warning('Dossier créé mais certains fichiers n\'ont pas pu être uploadés');
+        }
       }
       
       return this.transformDossier(response.data);
       
     } catch (error: any) {
-      console.error('❌ Erreur création dossier:');
-      
-      if (error.response) {
-        console.error('Status:', error.response.status);
-        console.error('Data:', error.response.data);
-        
-        if (error.response.data) {
-          if (typeof error.response.data === 'object') {
-            Object.entries(error.response.data).forEach(([field, errors]: [string, any]) => {
-              if (Array.isArray(errors)) {
-                errors.forEach(err => toast.error(`${field}: ${err}`));
-              } else {
-                toast.error(`${field}: ${errors}`);
-              }
-            });
-          } else {
-            toast.error(error.response.data.detail || 'Erreur lors de la création');
-          }
-        }
-      } else if (error.request) {
-        console.error('Pas de réponse du serveur');
-        toast.error('Le serveur ne répond pas');
-      } else {
-        console.error('Erreur:', error.message);
-        toast.error(error.message || 'Erreur de communication');
-      }
-      
+      console.error('❌ Erreur générale création dossier:', error);
+      toast.error(error.message || 'Erreur lors de la création du dossier');
       return null;
     }
   }
@@ -382,8 +372,10 @@ class DossierService {
    * Upload multiple documents
    */
   async uploadMultipleDocuments(dossierId: string, files: File[]): Promise<boolean> {
-    try {
-      for (const file of files) {
+    let allSuccess = true;
+    
+    for (const file of files) {
+      try {
         const formData = new FormData();
         formData.append('dossier', dossierId);
         formData.append('fichier', file);
@@ -395,14 +387,14 @@ class DossierService {
         });
         
         console.log(`✅ Fichier uploadé: ${file.name}`);
+      } catch (error) {
+        console.error(`❌ Erreur upload ${file.name}:`, error);
+        allSuccess = false;
+        toast.error(`Erreur lors de l'upload de ${file.name}`);
       }
-      toast.success(`${files.length} fichier(s) uploadé(s) avec succès`);
-      return true;
-    } catch (error) {
-      console.error('❌ Erreur upload multiple:', error);
-      toast.error('Erreur lors de l\'upload des fichiers');
-      return false;
     }
+    
+    return allSuccess;
   }
 
   /**
@@ -422,15 +414,13 @@ class DossierService {
       console.log('✅ Réponse envoi:', response.data);
       toast.success('✅ Dossier envoyé avec succès !');
       
-      return response.data.dossier || response.data;
+      return this.transformDossier(response.data.dossier || response.data);
       
     } catch (error: any) {
       console.error('❌ Erreur envoi dossier:');
       
-      if (error.response) {
-        console.error('Status:', error.response.status);
-        console.error('Data:', error.response.data);
-        toast.error(error.response.data?.error || 'Erreur lors de l\'envoi');
+      if (error.response?.data) {
+        toast.error(error.response.data.error || 'Erreur lors de l\'envoi');
       } else {
         toast.error('Erreur de communication');
       }
@@ -448,11 +438,9 @@ class DossierService {
       console.log('✅ ID Dossier:', dossierId);
       console.log('✅ Par rôle:', userRole);
       
-      const dataToSend = { role: userRole };
-      
-      console.log('📤 Envoi des données:', dataToSend);
-      
-      const response = await api.post(`/dossiers/${dossierId}/valider/`, dataToSend);
+      const response = await api.post(`/dossiers/${dossierId}/valider/`, {
+        role: userRole
+      });
       
       console.log('✅ Réponse validation:', response.data);
       toast.success('✅ Validation réussie !');
@@ -460,25 +448,12 @@ class DossierService {
       return this.transformDossier(response.data);
       
     } catch (error: any) {
-      console.error('❌ Erreur validation:');
+      console.error('❌ Erreur validation:', error);
       
-      if (error.response) {
-        console.error('Status:', error.response.status);
-        console.error('Data:', error.response.data);
-        
-        const errorMsg = error.response.data?.detail || 
-                        error.response.data?.error || 
-                        error.response.data?.message ||
-                        'Erreur lors de la validation';
-        toast.error(errorMsg);
-      } else if (error.request) {
-        console.error('Pas de réponse du serveur');
-        toast.error('Le serveur ne répond pas');
-      } else {
-        console.error('Erreur:', error.message);
-        toast.error(error.message || 'Erreur de communication');
-      }
-      
+      const errorMsg = error.response?.data?.detail || 
+                      error.response?.data?.error || 
+                      'Erreur lors de la validation';
+      toast.error(errorMsg);
       return null;
     }
   }
@@ -494,12 +469,10 @@ class DossierService {
       console.log('❌ Par rôle:', userRole);
       console.log('❌ Motif:', motif);
       
-      const dataToSend = { 
+      const response = await api.post(`/dossiers/${dossierId}/rejeter/`, {
         role: userRole,
-        motif: motif 
-      };
-      
-      const response = await api.post(`/dossiers/${dossierId}/rejeter/`, dataToSend);
+        motif: motif
+      });
       
       console.log('✅ Réponse rejet:', response.data);
       toast.success('❌ Dossier rejeté');
@@ -507,47 +480,9 @@ class DossierService {
       return this.transformDossier(response.data);
       
     } catch (error: any) {
-      console.error('❌ Erreur rejet:');
-      
-      if (error.response) {
-        console.error('Status:', error.response.status);
-        console.error('Data:', error.response.data);
-        toast.error(error.response.data?.error || 'Erreur lors du rejet');
-      } else {
-        toast.error('Erreur de communication');
-      }
+      console.error('❌ Erreur rejet:', error);
+      toast.error(error.response?.data?.error || 'Erreur lors du rejet');
       return null;
-    }
-  }
-
-  /**
-   * Récupère les statistiques pour l'utilisateur
-   */
-  async getStatistiques(userEmail: string, userRole: string): Promise<any> {
-    try {
-      const dossiers = await this.getDossiersForUser(userEmail, userRole);
-      
-      const stats = {
-        enCours: dossiers.filter(d => 
-          [this.STATUTS.EN_ATTENTE_DREN, this.STATUTS.EN_ATTENTE_MEN, 
-           this.STATUTS.EN_ATTENTE_FOP, this.STATUTS.EN_ATTENTE_FINANCE].includes(d.statut as any)
-        ).length,
-        termines: dossiers.filter(d => d.statut === this.STATUTS.TERMINE).length,
-        bloques: dossiers.filter(d => d.statut === this.STATUTS.BLOQUE || d.statut === this.STATUTS.REJETE).length,
-        total: dossiers.length,
-        enRetard: dossiers.filter(d => {
-          if (d.date_limite && d.statut !== this.STATUTS.TERMINE) {
-            return new Date(d.date_limite) < new Date();
-          }
-          return false;
-        }).length,
-        parCategorie: {}
-      };
-      
-      return stats;
-    } catch (error) {
-      console.error('Erreur calcul statistiques:', error);
-      return { enCours: 0, termines: 0, bloques: 0, total: 0, enRetard: 0, parCategorie: {} };
     }
   }
 
@@ -564,13 +499,6 @@ class DossierService {
       toast.error('Erreur lors de la suppression');
       return false;
     }
-  }
-
-  /**
-   * Supprime un document d'un dossier
-   */
-  async removeDocument(dossierId: string, documentId: string): Promise<boolean> {
-    return this.deleteDocument(documentId);
   }
 }
 

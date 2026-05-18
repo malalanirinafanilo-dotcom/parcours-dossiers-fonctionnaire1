@@ -1,7 +1,8 @@
-// src/pages/IAAnalyses/IAAnalyses.tsx
+// src/pages/IAAnalyses/IAAnalyses.tsx - Version modernisée
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
+import { motion } from 'framer-motion';
 import {
   Brain,
   AlertTriangle,
@@ -22,7 +23,10 @@ import {
   Search,
   X,
   ChevronRight,
-  RefreshCw
+  RefreshCw,
+  Shield,
+  BarChart3,
+  PieChart
 } from 'lucide-react';
 import {
   BarChart,
@@ -32,18 +36,19 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  PieChart,
+  PieChart as RePieChart,
   Pie,
   Cell,
   LineChart,
-  Line
+  Line,
+  Area,
+  AreaChart
 } from 'recharts';
 import { RootState } from '../../store';
 import { dossierService } from '../../services/dossierService';
 import { Dossier } from '../../types';
 import toast from 'react-hot-toast';
 
-// ==================== TYPES ====================
 interface IAAnalyse {
   dossierId: string;
   numeroDossier: string;
@@ -64,19 +69,16 @@ interface StatsIA {
   totalAnalyses: number;
 }
 
-// ==================== COULEURS ====================
 const COLORS = {
   conforme: '#22c55e',
   risque: '#eab308',
   critique: '#ef4444'
 };
 
-// ==================== COMPOSANT PRINCIPAL ====================
 const IAAnalyses: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useSelector((state: RootState) => state.auth);
   
-  // États
   const [loading, setLoading] = useState(true);
   const [analyses, setAnalyses] = useState<IAAnalyse[]>([]);
   const [filteredAnalyses, setFilteredAnalyses] = useState<IAAnalyse[]>([]);
@@ -88,16 +90,10 @@ const IAAnalyses: React.FC = () => {
     totalAnalyses: 0
   });
   
-  // Filtres
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedNiveau, setSelectedNiveau] = useState('tous');
   const [showFilters, setShowFilters] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-
-  const userEmail = user?.email || '';
-  const userRole = user?.role?.code || '';
-
-  // Données pour les graphiques
   const [evolutionData, setEvolutionData] = useState<{ date: string; score: number }[]>([]);
   const [repartitionData, setRepartitionData] = useState([
     { name: 'Conforme', value: 0, color: COLORS.conforme },
@@ -105,9 +101,7 @@ const IAAnalyses: React.FC = () => {
     { name: 'Critique', value: 0, color: COLORS.critique }
   ]);
 
-  // ==================== SIMULATION D'ANALYSE IA ====================
   const genererAnalyse = (dossier: Dossier): IAAnalyse => {
-    // Simulation d'un score basé sur le statut et l'étape
     let scoreRisque = 0;
     let anomalies: string[] = [];
     
@@ -134,7 +128,6 @@ const IAAnalyses: React.FC = () => {
       scoreRisque = 30 + Math.floor(Math.random() * 40);
     }
 
-    // Limiter le score entre 0 et 100
     scoreRisque = Math.min(100, Math.max(0, scoreRisque));
     
     let classification = '';
@@ -155,18 +148,17 @@ const IAAnalyses: React.FC = () => {
     };
   };
 
-  // ==================== CHARGEMENT DES DONNÉES ====================
   const loadData = async () => {
     setLoading(true);
     try {
+      const userEmail = user?.email || '';
+      const userRole = user?.role?.code || '';
       const dossiers = await dossierService.getDossiersForUser(userEmail, userRole);
       
-      // Générer les analyses
       const analysesGenerees = dossiers.map(genererAnalyse);
       setAnalyses(analysesGenerees);
       setFilteredAnalyses(analysesGenerees);
       
-      // Calculer les stats
       const conformes = analysesGenerees.filter(a => a.scoreRisque < 30).length;
       const risque = analysesGenerees.filter(a => a.scoreRisque >= 30 && a.scoreRisque < 60).length;
       const critiques = analysesGenerees.filter(a => a.scoreRisque >= 60).length;
@@ -186,7 +178,6 @@ const IAAnalyses: React.FC = () => {
         { name: 'Critique', value: critiques, color: COLORS.critique }
       ]);
       
-      // Générer des données d'évolution simulées
       const evolution = [];
       for (let i = 6; i >= 0; i--) {
         const date = new Date();
@@ -199,14 +190,17 @@ const IAAnalyses: React.FC = () => {
       setEvolutionData(evolution);
       
     } catch (error) {
-      console.error('❌ Erreur chargement analyses:', error);
+      console.error('Erreur:', error);
       toast.error('Erreur lors du chargement');
     } finally {
       setLoading(false);
     }
   };
 
-  // ==================== FILTRES ====================
+  useEffect(() => {
+    loadData();
+  }, []);
+
   useEffect(() => {
     let filtered = [...analyses];
     
@@ -231,7 +225,6 @@ const IAAnalyses: React.FC = () => {
     setFilteredAnalyses(filtered);
   }, [analyses, searchTerm, selectedNiveau]);
 
-  // ==================== ACTIONS ====================
   const refreshData = async () => {
     setRefreshing(true);
     await loadData();
@@ -239,140 +232,142 @@ const IAAnalyses: React.FC = () => {
     toast.success('Données actualisées');
   };
 
-  // ==================== INITIALISATION ====================
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  // ==================== COMPOSANTS D'AFFICHAGE ====================
   const getScoreColor = (score: number) => {
-    if (score < 30) return 'text-green-600 bg-green-50';
-    if (score < 60) return 'text-yellow-600 bg-yellow-50';
-    return 'text-red-600 bg-red-50';
+    if (score < 30) return 'text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30 dark:text-emerald-400';
+    if (score < 60) return 'text-amber-600 bg-amber-50 dark:bg-amber-950/30 dark:text-amber-400';
+    return 'text-rose-600 bg-rose-50 dark:bg-rose-950/30 dark:text-rose-400';
   };
 
   const getScoreIcon = (score: number) => {
-    if (score < 30) return <CheckCircle2 className="w-4 h-4 text-green-600" />;
-    if (score < 60) return <AlertTriangle className="w-4 h-4 text-yellow-600" />;
-    return <XCircle className="w-4 h-4 text-red-600" />;
+    if (score < 30) return <CheckCircle2 className="h-4 w-4 text-emerald-600" />;
+    if (score < 60) return <AlertTriangle className="h-4 w-4 text-amber-600" />;
+    return <XCircle className="h-4 w-4 text-rose-600" />;
   };
 
-  // ==================== RENDU ====================
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="relative">
-          <div className="w-12 h-12 border-4 border-green-200 rounded-full"></div>
-          <div className="w-12 h-12 border-4 border-green-600 border-t-transparent rounded-full animate-spin absolute top-0 left-0"></div>
-        </div>
+      <div className="flex h-64 items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-accent-500 border-t-transparent" />
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      {/* ===== EN-TÊTE ===== */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      {/* En-tête */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold bg-gradient-to-r from-green-600 to-green-500 bg-clip-text text-transparent flex items-center gap-2">
-            <Brain className="w-6 h-6 text-green-600" />
+          <h1 className="flex items-center gap-2 text-2xl font-bold text-dark-900 dark:text-dark-100">
+            <Brain className="h-6 w-6 text-accent-500" />
             Analyses IA
           </h1>
-          <p className="text-neutral-600 text-sm mt-1">
+          <p className="mt-1 text-sm text-dark-500 dark:text-dark-400">
             Analyse prédictive et évaluation des risques
           </p>
         </div>
         <button
           onClick={refreshData}
           disabled={refreshing}
-          className="btn-secondary flex items-center gap-2 px-4 py-2"
+          className="inline-flex items-center gap-2 rounded-xl border border-dark-200 bg-white px-4 py-2.5 text-sm font-medium text-dark-600 transition-all hover:bg-dark-50 dark:border-dark-800 dark:bg-dark-900 dark:text-dark-400"
         >
           <RefreshCw size={16} className={refreshing ? 'animate-spin' : ''} />
           Actualiser
         </button>
       </div>
 
-      {/* ===== STATS CARDS ===== */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white rounded-xl p-4 shadow-soft border border-neutral-100">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs text-neutral-500">Score moyen</span>
-            <Gauge className="w-4 h-4 text-neutral-400" />
+      {/* Cartes statistiques */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="rounded-2xl border border-dark-200 bg-white p-4 dark:border-dark-800 dark:bg-dark-900">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-dark-500">Score moyen</p>
+              <p className="text-2xl font-bold text-dark-900 dark:text-dark-100">{stats.scoreMoyen}</p>
+              <p className="text-xs text-dark-400">sur 100</p>
+            </div>
+            <Gauge className="h-8 w-8 text-dark-400" />
           </div>
-          <p className="text-2xl font-bold text-neutral-900">{stats.scoreMoyen}</p>
-          <p className="text-xs text-neutral-500 mt-1">sur 100</p>
         </div>
-
-        <div className="bg-white rounded-xl p-4 shadow-soft border border-neutral-100">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs text-neutral-500">Conformes</span>
-            <CheckCircle2 className="w-4 h-4 text-green-600" />
+        <div className="rounded-2xl border border-dark-200 bg-white p-4 dark:border-dark-800 dark:bg-dark-900">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-dark-500">Conformes</p>
+              <p className="text-2xl font-bold text-emerald-600">{stats.dossiersConformes}</p>
+              <p className="text-xs text-dark-400">Score &lt; 30</p>
+            </div>
+            <CheckCircle2 className="h-8 w-8 text-emerald-500" />
           </div>
-          <p className="text-2xl font-bold text-green-600">{stats.dossiersConformes}</p>
-          <p className="text-xs text-neutral-500 mt-1">Score &lt; 30</p>
         </div>
-
-        <div className="bg-white rounded-xl p-4 shadow-soft border border-neutral-100">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs text-neutral-500">À risque</span>
-            <AlertTriangle className="w-4 h-4 text-yellow-600" />
+        <div className="rounded-2xl border border-dark-200 bg-white p-4 dark:border-dark-800 dark:bg-dark-900">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-dark-500">À risque</p>
+              <p className="text-2xl font-bold text-amber-600">{stats.dossiersRisque}</p>
+              <p className="text-xs text-dark-400">Score 30-59</p>
+            </div>
+            <AlertTriangle className="h-8 w-8 text-amber-500" />
           </div>
-          <p className="text-2xl font-bold text-yellow-600">{stats.dossiersRisque}</p>
-          <p className="text-xs text-neutral-500 mt-1">Score 30-59</p>
         </div>
-
-        <div className="bg-white rounded-xl p-4 shadow-soft border border-neutral-100">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs text-neutral-500">Critiques</span>
-            <XCircle className="w-4 h-4 text-red-600" />
+        <div className="rounded-2xl border border-dark-200 bg-white p-4 dark:border-dark-800 dark:bg-dark-900">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-dark-500">Critiques</p>
+              <p className="text-2xl font-bold text-rose-600">{stats.dossiersCritiques}</p>
+              <p className="text-xs text-dark-400">Score &gt; 60</p>
+            </div>
+            <XCircle className="h-8 w-8 text-rose-500" />
           </div>
-          <p className="text-2xl font-bold text-red-600">{stats.dossiersCritiques}</p>
-          <p className="text-xs text-neutral-500 mt-1">Score &gt; 60</p>
         </div>
       </div>
 
-      {/* ===== GRAPHIQUES ===== */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Graphique d'évolution */}
-        <div className="bg-white rounded-xl p-5 shadow-soft border border-neutral-100">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold text-neutral-900">Évolution des scores</h3>
-            <Activity className="w-4 h-4 text-neutral-400" />
+      {/* Graphiques */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        {/* Évolution des scores */}
+        <div className="rounded-2xl border border-dark-200 bg-white p-5 dark:border-dark-800 dark:bg-dark-900">
+          <div className="mb-4 flex items-center justify-between">
+            <h3 className="font-semibold text-dark-900 dark:text-dark-100">Évolution des scores</h3>
+            <Activity className="h-4 w-4 text-dark-400" />
           </div>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={evolutionData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#6b7280' }} />
-                <YAxis domain={[0, 100]} tick={{ fontSize: 11, fill: '#6b7280' }} />
-                <Tooltip />
-                <Line 
-                  type="monotone" 
-                  dataKey="score" 
-                  stroke="#22c55e" 
-                  strokeWidth={2}
-                  dot={{ fill: '#22c55e', r: 3 }}
+              <AreaChart data={evolutionData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#64748b' }} />
+                <YAxis domain={[0, 100]} tick={{ fontSize: 11, fill: '#64748b' }} />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: '#fff',
+                    borderRadius: '12px',
+                    border: '1px solid #e2e8f0',
+                    fontSize: '12px'
+                  }}
                 />
-              </LineChart>
+                <Area
+                  type="monotone"
+                  dataKey="score"
+                  stroke="#3b82f6"
+                  fill="#3b82f6"
+                  fillOpacity={0.1}
+                />
+              </AreaChart>
             </ResponsiveContainer>
           </div>
         </div>
 
-        {/* Graphique de répartition */}
-        <div className="bg-white rounded-xl p-5 shadow-soft border border-neutral-100">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold text-neutral-900">Répartition des risques</h3>
-            <Target className="w-4 h-4 text-neutral-400" />
+        {/* Répartition des risques */}
+        <div className="rounded-2xl border border-dark-200 bg-white p-5 dark:border-dark-800 dark:bg-dark-900">
+          <div className="mb-4 flex items-center justify-between">
+            <h3 className="font-semibold text-dark-900 dark:text-dark-100">Répartition des risques</h3>
+            <PieChart className="h-4 w-4 text-dark-400" />
           </div>
-          <div className="h-64 flex items-center justify-center">
+          <div className="flex h-64 items-center justify-center">
             <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
+              <RePieChart>
                 <Pie
                   data={repartitionData}
                   cx="50%"
                   cy="50%"
                   innerRadius={50}
-                  outerRadius={70}
+                  outerRadius={80}
                   dataKey="value"
                   label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
                   labelLine={false}
@@ -382,51 +377,53 @@ const IAAnalyses: React.FC = () => {
                   ))}
                 </Pie>
                 <Tooltip />
-              </PieChart>
+              </RePieChart>
             </ResponsiveContainer>
           </div>
         </div>
       </div>
 
-      {/* ===== FILTRES ===== */}
-      <div className="bg-white rounded-xl p-4 shadow-soft border border-neutral-100">
-        <div className="flex flex-col md:flex-row gap-3">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-neutral-400" size={16} />
+      {/* Filtres */}
+      <div className="space-y-4">
+        <div className="flex flex-col gap-3 sm:flex-row">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-dark-400" size={16} />
             <input
               type="text"
               placeholder="Rechercher un dossier..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-9 pr-3 py-2 text-sm bg-neutral-50 border border-neutral-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              className="w-full rounded-xl border border-dark-200 bg-white py-2.5 pl-10 pr-4 text-sm text-dark-900 placeholder:text-dark-400 focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500 dark:border-dark-800 dark:bg-dark-900 dark:text-dark-100"
             />
             {searchTerm && (
               <button
                 onClick={() => setSearchTerm('')}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-neutral-400 hover:text-green-600"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-dark-400 hover:text-accent-500"
               >
                 <X size={14} />
               </button>
             )}
           </div>
-          
           <button
             onClick={() => setShowFilters(!showFilters)}
-            className="btn-secondary flex items-center gap-2 px-4 py-2 text-sm"
+            className="inline-flex items-center gap-2 rounded-xl border border-dark-200 bg-white px-4 py-2.5 text-sm font-medium text-dark-600 transition-all hover:bg-dark-50 dark:border-dark-800 dark:bg-dark-900 dark:text-dark-400"
           >
-            <Filter size={14} />
+            <Filter size={16} />
             Filtres
+            {selectedNiveau !== 'tous' && <span className="h-2 w-2 rounded-full bg-accent-500" />}
           </button>
         </div>
 
         {showFilters && (
-          <div className="mt-4 pt-4 border-t border-neutral-200">
+          <div className="rounded-xl border border-dark-200 bg-white p-4 dark:border-dark-800 dark:bg-dark-900">
             <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-1">Niveau de risque</label>
+              <label className="mb-1.5 block text-sm font-medium text-dark-700 dark:text-dark-300">
+                Niveau de risque
+              </label>
               <select
                 value={selectedNiveau}
                 onChange={(e) => setSelectedNiveau(e.target.value)}
-                className="w-full px-3 py-2 text-sm bg-neutral-50 border border-neutral-200 rounded-lg"
+                className="w-full rounded-xl border border-dark-200 bg-white px-3 py-2 text-sm text-dark-900 focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500 dark:border-dark-800 dark:bg-dark-900 dark:text-dark-100"
               >
                 <option value="tous">Tous</option>
                 <option value="conforme">Conforme (score &lt; 30)</option>
@@ -438,63 +435,67 @@ const IAAnalyses: React.FC = () => {
         )}
       </div>
 
-      {/* ===== LISTE DES ANALYSES ===== */}
-      <div className="bg-white rounded-xl shadow-soft border border-neutral-100 overflow-hidden">
-        <div className="px-5 py-4 border-b border-neutral-100">
-          <h3 className="font-semibold text-neutral-900">
+      {/* Liste des analyses */}
+      <div className="rounded-2xl border border-dark-200 bg-white dark:border-dark-800 dark:bg-dark-900">
+        <div className="border-b border-dark-200 px-5 py-4 dark:border-dark-800">
+          <h3 className="font-semibold text-dark-900 dark:text-dark-100">
             Résultats détaillés
-            <span className="ml-2 text-sm font-normal text-neutral-500">
+            <span className="ml-2 text-sm font-normal text-dark-500">
               ({filteredAnalyses.length} dossier{filteredAnalyses.length > 1 ? 's' : ''})
             </span>
           </h3>
         </div>
 
         {filteredAnalyses.length > 0 ? (
-          <div className="divide-y divide-neutral-100">
+          <div className="divide-y divide-dark-200 dark:divide-dark-800">
             {filteredAnalyses.slice(0, 10).map((analyse) => (
               <div
                 key={analyse.dossierId}
                 onClick={() => navigate(`/dossiers/${analyse.dossierId}`)}
-                className="px-5 py-4 hover:bg-neutral-50 cursor-pointer transition-colors flex items-center justify-between gap-4"
+                className="flex cursor-pointer items-center justify-between gap-4 px-5 py-4 transition-colors hover:bg-dark-50 dark:hover:bg-dark-800/50"
               >
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-mono text-xs font-medium text-green-600 bg-green-50 px-2 py-0.5 rounded">
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-mono text-xs font-medium text-accent-600 dark:text-accent-400">
                       {analyse.numeroDossier}
                     </span>
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${getScoreColor(analyse.scoreRisque)}`}>
+                    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${getScoreColor(analyse.scoreRisque)}`}>
                       {analyse.classification}
                     </span>
                   </div>
-                  <p className="text-sm font-medium text-neutral-900 mt-1 truncate">{analyse.titre}</p>
-                  <p className="text-xs text-neutral-500 mt-0.5">Étape: {analyse.etape}</p>
+                  <p className="mt-1 truncate text-sm font-medium text-dark-900 dark:text-dark-100">
+                    {analyse.titre}
+                  </p>
+                  <p className="mt-0.5 text-xs text-dark-500">Étape: {analyse.etape}</p>
                 </div>
 
                 <div className="flex items-center gap-4">
                   <div className="text-right">
                     <div className="flex items-center gap-1">
                       {getScoreIcon(analyse.scoreRisque)}
-                      <span className="text-lg font-bold text-neutral-900">{analyse.scoreRisque}</span>
+                      <span className="text-lg font-bold text-dark-900 dark:text-dark-100">
+                        {analyse.scoreRisque}
+                      </span>
                     </div>
-                    <p className="text-xs text-neutral-500">score</p>
+                    <p className="text-xs text-dark-500">score</p>
                   </div>
-                  <ChevronRight size={16} className="text-neutral-400" />
+                  <ChevronRight size={16} className="text-dark-400" />
                 </div>
               </div>
             ))}
           </div>
         ) : (
           <div className="py-12 text-center">
-            <Brain size={40} className="mx-auto text-neutral-300 mb-3" />
-            <p className="text-neutral-500">Aucune analyse trouvée</p>
+            <Brain size={40} className="mx-auto text-dark-300 dark:text-dark-700" />
+            <p className="mt-3 text-dark-500 dark:text-dark-400">Aucune analyse trouvée</p>
           </div>
         )}
 
         {filteredAnalyses.length > 10 && (
-          <div className="px-5 py-3 bg-neutral-50 border-t border-neutral-100 text-center">
-            <button 
+          <div className="border-t border-dark-200 bg-dark-50 px-5 py-3 text-center dark:border-dark-800 dark:bg-dark-800/50">
+            <button
               onClick={() => navigate('/dossiers')}
-              className="text-sm text-green-600 hover:text-green-700 font-medium"
+              className="text-sm font-medium text-accent-600 hover:text-accent-700 dark:text-accent-400"
             >
               Voir tous les dossiers
             </button>

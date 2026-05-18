@@ -8,7 +8,7 @@ export default defineConfig({
     port: 3000,
     proxy: {
       '/api': {
-        target: process.env.VITE_API_URL || 'http://localhost:8000',
+        target: 'http://localhost:8000',
         changeOrigin: true,
       }
     }
@@ -16,8 +16,5 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     sourcemap: false,
-  },
-  define: {
-    'import.meta.env.VITE_API_URL': JSON.stringify('https://parcours-dossiers-api.onrender.com/api')
   }
 })

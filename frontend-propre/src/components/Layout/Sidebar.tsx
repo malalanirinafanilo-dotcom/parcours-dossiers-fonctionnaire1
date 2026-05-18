@@ -26,7 +26,8 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, isMobile, setSidebarOpen
   
   const userRole = user?.role?.code || '';
   const isSuperUser = user?.is_superuser || false;
-  const canCreateDossier = userRole === 'UTILISATEUR' || user?.email === 'interesse@example.com';
+  const isAdmin = isSuperUser || userRole === 'ADMIN';  // ✅ Vérification admin
+  const canCreateDossier = userRole === 'UTILISATEUR' || user?.email === 'interesse@gmail.com';
 
   const navLinkClass = ({ isActive }: { isActive: boolean }) =>
     `flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
@@ -64,7 +65,7 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, isMobile, setSidebarOpen
             </NavLink>
           </li>
 
-          {/* Nouveau Dossier */}
+          {/* Nouveau Dossier - Seul l'intéressé */}
           {canCreateDossier && (
             <li>
               <NavLink to="/dossiers/creer" className={navLinkClass} onClick={handleLinkClick}>
@@ -106,8 +107,18 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, isMobile, setSidebarOpen
             </NavLink>
           </li>
 
+          {/* ✅ Paramètres - Seul l'admin voit */}
+          {isAdmin && (
+            <li>
+              <NavLink to="/parametres" className={navLinkClass} onClick={handleLinkClick}>
+                <Settings size={20} />
+                {sidebarOpen && <span>Paramètres</span>}
+              </NavLink>
+            </li>
+          )}
+
           {/* Admin - Uniquement pour superuser */}
-          {(isSuperUser || userRole === 'ADMIN') && (
+          {isSuperUser && (
             <>
               <li className="pt-4 mt-2 border-t border-gray-200">
                 <p className={`text-xs font-semibold text-gray-400 uppercase tracking-wider ${!sidebarOpen && 'text-center'}`}>
@@ -122,14 +133,6 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, isMobile, setSidebarOpen
               </li>
             </>
           )}
-
-          {/* Paramètres - Pour tout le monde */}
-          <li>
-            <NavLink to="/parametres" className={navLinkClass} onClick={handleLinkClick}>
-              <Settings size={20} />
-              {sidebarOpen && <span>Paramètres</span>}
-            </NavLink>
-          </li>
 
           {/* Déconnexion */}
           <li className="mt-4">
